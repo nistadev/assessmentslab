@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import Quiz from '../components/Quiz';
+import '../styles/global.css';
+
+const entries = await getCollection('questions');
+
+const questions = entries.flatMap(entry =>
+  entry.data.questions.map(q => ({
+    ...q,
+    category: entry.data.category,
+  }))
+);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoloTestSkills</title>
+    <script is:inline>
+      const storedTheme = localStorage.getItem('theme');
+      const legacyTheme = storedTheme === 'dark' ? 'business' : storedTheme;
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'business' : 'light';
+      const theme = legacyTheme === 'light' || legacyTheme === 'business' ? legacyTheme : systemTheme;
+      document.documentElement.dataset.theme = theme;
+    </script>
+  </head>
+  <body class="min-h-screen bg-base-100">
+    <Quiz questions={questions} client:load />
+  </body>
+</html>
