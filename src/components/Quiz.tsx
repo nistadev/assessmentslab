@@ -229,7 +229,9 @@ export default function Quiz({
       question={question}
       qIdx={qIdx}
       total={shuffled.length}
+      answeredCount={answers.length}
       timeLeft={timeLeft}
+      totalTime={totalTime}
       selected={selected}
       confirmed={confirmed}
       isCorrect={isCorrect}

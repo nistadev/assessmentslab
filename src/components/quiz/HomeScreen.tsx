@@ -66,11 +66,19 @@ export function HomeScreen({
   return (
     <div className="relative min-h-screen flex items-start justify-center px-4 py-10">
       <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-      <div className="card bg-base-200 shadow-xl w-full max-w-2xl">
+      <div className="card brand-shell w-full max-w-2xl">
         <div className="card-body gap-5">
-          <div>
-            <h1 className="text-3xl font-bold">SoloTestSkills</h1>
-            <p className="text-base-content/60 mt-1">{totalQ} questions · shuffled every run</p>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="brand-chip">AssesLab</span>
+              <span className="text-sm font-medium text-base-content/55">{totalQ} questions loaded</span>
+            </div>
+            <div>
+              <h1 className="brand-heading">Stress-test your engineering instincts.</h1>
+              <p className="text-base-content/70 mt-2 max-w-xl">
+                AssesLab drills interview-grade questions across development disciplines with shuffled runs, timed rounds, and tight feedback loops.
+              </p>
+            </div>
           </div>
 
           <div>
@@ -187,7 +195,7 @@ export function HomeScreen({
             onClick={() => selected.length > 0 && difficulties.length > 0 && availableCount > 0 && onStart(selected, timerMinutes, maxQuestions, feedbackMode, difficulties)}
             disabled={selected.length === 0 || difficulties.length === 0 || availableCount === 0}
           >
-            Start Quiz →
+            Start Test →
           </button>
         </div>
       </div>

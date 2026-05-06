@@ -6,8 +6,8 @@ export function QuestionPrompt({ q, isCode }: { q: string; isCode: boolean }) {
   if (split) {
     return (
       <>
+        <p className="font-semibold text-base mb-3">{split.prompt}</p>
         <pre className="bg-base-300 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed font-mono overflow-x-auto">{split.code}</pre>
-        <p className="font-semibold text-base mt-3">{split.prompt}</p>
       </>
     );
   }

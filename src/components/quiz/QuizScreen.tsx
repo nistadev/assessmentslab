@@ -9,7 +9,9 @@ export function QuizScreen({
   question,
   qIdx,
   total,
+  answeredCount,
   timeLeft,
+  totalTime,
   selected,
   confirmed,
   isCorrect,
@@ -24,7 +26,9 @@ export function QuizScreen({
   question: ShuffledQuestion;
   qIdx: number;
   total: number;
+  answeredCount: number;
   timeLeft: number;
+  totalTime: number;
   selected: number | null;
   confirmed: boolean;
   isCorrect: boolean;
@@ -40,9 +44,14 @@ export function QuizScreen({
   const secs = String(timeLeft % 60).padStart(2, '0');
   const timerDanger = timeLeft < 60;
   const showFeedback = confirmed && feedbackMode === 'immediate';
+  const elapsedTime = Math.max(0, totalTime - timeLeft);
+  const elapsedMins = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+  const elapsedSecs = String(elapsedTime % 60).padStart(2, '0');
+  const totalMins = String(Math.floor(totalTime / 60)).padStart(2, '0');
+  const totalSecs = String(totalTime % 60).padStart(2, '0');
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center py-6 px-4">
+    <div className="quiz-plain-bg relative min-h-screen flex flex-col items-center py-6 px-4">
       <button
         type="button"
         className="btn btn-ghost btn-sm fixed left-4 top-4 z-20 border border-base-content/10 bg-base-100/80 backdrop-blur"
@@ -53,27 +62,55 @@ export function QuizScreen({
       </button>
       <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       <div className="w-full max-w-5xl">
-        <div className="flex items-center justify-between mb-3 gap-4">
-          <span className={`badge ${getCategoryBadge(question.category)} badge-md`}>
-            {question.category}
-          </span>
-          <span className={`font-mono font-bold text-lg ${timerDanger ? 'text-error' : 'text-base-content'}`}>
-            {mins}:{secs}
-          </span>
-          <span className="text-base-content/50 text-sm whitespace-nowrap">
-            {qIdx + 1} / {total}
-          </span>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <span className="brand-chip">AssesLab</span>
+          <div className="flex items-center gap-4">
+            <span className={`font-mono font-bold text-lg ${timerDanger ? 'text-error' : 'text-base-content'}`}>
+              {mins}:{secs}
+            </span>
+            <span className="text-base-content/50 text-sm whitespace-nowrap">
+              {qIdx + 1} / {total}
+            </span>
+          </div>
         </div>
 
-        <progress
-          className="progress progress-primary w-full mb-5"
-          value={qIdx}
-          max={total}
-        />
+        <div className="mb-5 space-y-3">
+          <div>
+            <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+              <span>Time</span>
+              <span>{elapsedMins}:{elapsedSecs} / {totalMins}:{totalSecs}</span>
+            </div>
+            <progress
+              className="progress progress-primary w-full"
+              value={elapsedTime}
+              max={totalTime}
+            />
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+              <span>Answered</span>
+              <span>{answeredCount} / {total}</span>
+            </div>
+            <progress
+              className="progress progress-secondary w-full"
+              value={answeredCount}
+              max={total}
+            />
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <div className="card bg-base-200 shadow-md">
+          <div className="card brand-shell">
             <div className="card-body p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <span className={`badge ${getCategoryBadge(question.category)} badge-md`}>
+                  {question.category}
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-base-content/45">
+                  Question {qIdx + 1}
+                </span>
+              </div>
               <QuestionPrompt q={question.q} isCode={question.isCode} />
             </div>
           </div>
