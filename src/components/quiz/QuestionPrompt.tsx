@@ -1,18 +1,12 @@
-import { splitCodeQuestion } from './utils';
-
-export function QuestionPrompt({ q, isCode }: { q: string; isCode: boolean }) {
-  const split = isCode ? splitCodeQuestion(q) : null;
-
-  if (split) {
+export function QuestionPrompt({ q, code }: { q: string; code?: string }) {
+  if (code) {
     return (
       <>
-        <p className="font-semibold text-base mb-3">{split.prompt}</p>
-        <pre className="bg-base-300 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed font-mono overflow-x-auto">{split.code}</pre>
+        <p className="font-semibold text-base mb-3">{q}</p>
+        <pre className="bg-base-300 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed font-mono overflow-x-auto">{code}</pre>
       </>
     );
   }
 
-  return (
-    <pre className="bg-base-300 rounded-lg p-4 text-sm whitespace-pre-wrap leading-relaxed font-mono overflow-x-auto">{q}</pre>
-  );
+  return <p className="font-semibold text-base">{q}</p>;
 }

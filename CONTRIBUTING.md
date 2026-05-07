@@ -1,9 +1,5 @@
 # Contributing
 
-## Scope
-
-This project is content-heavy and behavior-sensitive. Small UI changes are easy to make, but content schema, quiz flow, and shuffle behavior should stay predictable.
-
 ## Setup
 
 ```bash
@@ -11,140 +7,174 @@ npm install
 npm run dev
 ```
 
-Before opening a PR or handing off changes, run:
+Always run before opening a PR:
 
 ```bash
 npm run build
 ```
 
-`npm run build` is required because it validates question content through Astro content collections and Zod.
+`npm run build` validates all question content through Zod schema checks. If a question field is wrong, the build fails with a clear error.
 
-## Contribution Rules
+---
 
-### 1. Preserve content schema
+## Question Schema
 
-Question files in `src/content/questions/` must match `src/content.config.ts`.
+Question files live in `src/content/questions/*.md`. The schema is enforced by `src/content.config.ts`.
 
-Current required question fields:
+### Required file-level fields
 
-- `q: string`
-- `options: { text: string; correct: boolean }[]`
-- `explanation: string`
-- `isCode: boolean`
-- `difficulty: 'junior' | 'mid' | 'senior' | 'principal'`
+```yaml
+defaultDomains: ["frontend"]    # domain(s) applied to all questions in this file
+defaultTopics: ["react"]        # topic(s) applied to all questions in this file
+```
 
-Collection-level required field:
+### Required question fields
 
-- `category: string`
+```yaml
+- q: "Plain question text here."
+  options:
+    - text: "Option A"
+      correct: false
+    - text: "Correct answer"
+      correct: true
+    - text: "Option C"
+      correct: false
+    - text: "Option D"
+      correct: false
+  explanation: "Why this is correct and why the others are wrong."
+  difficulty: junior            # junior | mid | senior | principal
+```
 
-If you change schema, update both:
+### Optional question fields
 
-- `src/content.config.ts`
-- all affected Markdown content
+```yaml
+  code: |                       # Code snippet shown in a monospace block above options.
+    def foo():
+        return 42
+  domains: ["computer-science"] # Overrides defaultDomains for this question only.
+  topics: ["algorithms"]        # Overrides defaultTopics for this question only.
+```
 
-### 2. Keep question quality high
+### Key rules
+
+- `q` is plain text — the actual question sentence. Never embed code here.
+- `code` is the optional code block. Keep it under 15 lines for readability.
+- Exactly one option must have `correct: true`.
+- `difficulty` must be one of: `junior`, `mid`, `senior`, `principal`.
+- Run `npm run build` after adding questions — Zod reports malformed entries clearly.
+
+---
+
+## Domain and Topic Tagging
+
+Domains and topics determine which quiz filters surface a question.
+
+### Domains
+
+| Key | Used for |
+|---|---|
+| `frontend` | Browser platform, JS/TS, React, Angular |
+| `backend` | APIs, databases, Node.js, Python, server-side patterns |
+| `computer-science` | Algorithms, data structures, design patterns, SOLID |
+| `data-infra` | Data pipelines, DevOps, infrastructure |
+
+### Language conventions
+
+| Domain | Write code examples in |
+|---|---|
+| `computer-science` | Python or pseudocode — no framework imports |
+| `frontend` | JavaScript, TypeScript, React, or browser APIs |
+| `backend` | Node.js, Python, or server-side concepts |
+| `data-infra` | SQL, CLI, or conceptual |
+
+### Tagging rules
+
+- `defaultDomains` must match what's actually in the file. A file of React HOC questions belongs in `["frontend"]`.
+- Add per-question `domains` / `topics` overrides only when a question differs from the file default.
+- Tags are exclusive: `domains: ["frontend"]` means the question will NOT appear in a `computer-science` domain quiz.
+- Use multiple domains only when the question genuinely tests both (e.g. TypeScript generics apply to both frontend and backend).
+- `design-patterns` and `solid-principles` topics appear under both `computer-science` (Python examples) and `frontend` (React examples). Use per-question `topics` overrides in `react.md` to tag React-specific variants.
+
+To add a new topic, add an entry to `TOPIC_OPTIONS` in `src/content/categories.ts` then create the corresponding `.md` file.
+
+---
+
+## Content Quality
 
 Each question should:
 
-- test one clear concept
-- avoid ambiguous wording
-- include exactly one correct option
-- include an explanation that teaches, not only reveals answer
+- Test one clear concept
+- Have unambiguous wording
+- Have exactly one correct answer
+- Have an explanation that teaches, not just reveals
 
-For code questions:
+Good explanations include:
+1. The direct answer
+2. Why the wrong options are wrong (or what the trap is)
+3. A real-world production context where the concept matters
 
-- keep snippets short and readable
-- use YAML block scalar `q: |`
-- end with a trailing `// ...` prompt line when possible
+---
 
-### 3. Keep category names stable
-
-Category names are plain strings. Inconsistent spelling or casing creates duplicate categories in UI.
-
-If you add a new category, also update `CATEGORY_COLORS` in `src/components/quiz/utils.ts`.
-
-### 4. Respect quiz behavior
+## Quiz Behavior — Do Not Break
 
 Do not accidentally break:
 
-- category-balanced sampling in `sampleEvenlyByCategory()`
-- per-run shuffling in `buildShuffled()`
-- answer correctness after option shuffling
-- URL-based quiz config parsing in `buildQuizSearchParams()` / `parseQuizSearchParams()`
+- `sampleEvenlyByTopic()` — balanced question sampling across topics
+- `buildShuffled()` — per-run shuffling of question and option order
+- `questionMatchesSelection()` — domain + topic filter logic
+- URL-based quiz config: `buildQuizSearchParams()` / `parseQuizSearchParams()`
 
 If you change quiz flow, test both:
+- Start fresh from the home page
+- Resume from a `/quiz?...` URL
 
-- start from home page
-- start from `/quiz?...` URL params
+---
 
-### 5. UI changes should avoid distractions
+## UI Changes
 
-This app is study-first. Styling should support readability over novelty, especially on active quiz screens.
+This app is study-first. Prefer:
 
-Prefer:
+- Clean card layout
+- Clear visual hierarchy
+- Strong contrast
+- Restrained motion and decoration
 
-- clean card layout
-- clear hierarchy
-- strong contrast
-- restrained motion and decoration
+Avoid changes that add distraction during active quiz sessions.
 
-### 6. Theme changes must support both modes
+---
 
-Theme values are daisyUI theme names:
+## Theme
 
-- `light`
-- `business`
+daisyUI theme names are used directly:
 
-If you update theme logic or styles:
+- Light mode: `light`
+- Dark mode: `dark`
 
-- verify both modes
-- keep `localStorage` key behavior intact
-- keep `document.documentElement.dataset.theme` in sync
+If you update theme logic:
+- Verify both modes render correctly
+- Keep `localStorage` key behavior intact
+- Keep `document.documentElement.dataset.theme` in sync
 
-### 7. Keep docs in sync
+---
 
-If you change:
+## Keeping Docs in Sync
 
-- commands
-- question schema
-- category process
-- deployment assumptions
-
-update:
+If you change the question schema, domain list, topic list, quiz behavior, or component structure, update:
 
 - `README.md`
 - `CONTRIBUTING.md`
-- `AGENTS.md` when project guidance changes materially
+- `AGENTS.md`
 
-## Suggested Workflow
+---
 
-1. Make focused change.
-2. Run `npm run build`.
-3. Verify affected quiz flow manually.
-4. Update docs if behavior or authoring rules changed.
+## PR Checklist
 
-## PR Guidelines
-
-Good PRs are:
-
-- small
-- behaviorally clear
-- easy to verify
-- explicit about content/schema/UI impact
-
-Include:
-
-- what changed
-- why it changed
-- how you verified it
-
-## Content Checklist
-
-Before adding or editing questions, check:
-
-- category name is correct
-- difficulty is valid
-- one answer is correct
-- explanation is useful
-- code question prompt is readable
-- build passes
+- [ ] `npm run build` passes
+- [ ] Questions manually verified in the UI
+- [ ] Exactly one `correct: true` per question
+- [ ] `q` is plain text (no code embedded)
+- [ ] `code` field used for code snippets
+- [ ] `defaultDomains` and `defaultTopics` match actual content
+- [ ] Language matches domain convention (Python for CS, JS/React for frontend)
+- [ ] Explanation teaches the concept with production context
+- [ ] Docs updated if schema, domains, or behavior changed

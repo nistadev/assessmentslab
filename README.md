@@ -1,6 +1,6 @@
 # AssesLab
 
-AssesLab is a self-paced engineering quiz app built with Astro and React. It loads question banks from Markdown files at build time, shuffles both questions and options per run, and supports timed quiz sessions across multiple categories and difficulty levels.
+AssesLab is a self-paced engineering quiz app. It covers software engineering interview topics across multiple domains, loads question banks from Markdown files at build time, shuffles questions and options per run, and supports timed quiz sessions with configurable difficulty and topic filters.
 
 ## Stack
 
@@ -13,22 +13,19 @@ AssesLab is a self-paced engineering quiz app built with Astro and React. It loa
 
 ## Features
 
-- Static build, no runtime backend required
-- Question banks authored in Markdown frontmatter
-- Category filtering
+- Static build — no runtime backend required
+- Question banks authored in Markdown frontmatter, validated by Zod at build time
+- Domain and topic filtering (Frontend, Backend, Computer Science, Data & Infrastructure)
 - Difficulty filtering: `junior`, `mid`, `senior`, `principal`
-- Configurable timer
-- Configurable max question count
-- Two feedback modes:
-  - `Show response after check`
-  - `Show only at the end`
-- Shuffled question order and shuffled option order on every run
+- Configurable timer and max question count
+- Two feedback modes: after each answer, or only at the end
+- Shuffled question and option order on every run
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ recommended
+- Node.js 18+
 - npm
 
 ### Install
@@ -43,7 +40,7 @@ npm install
 npm run dev
 ```
 
-App runs on Astro dev server, usually at `http://localhost:4321`.
+App runs at `http://localhost:4321`.
 
 ### Build
 
@@ -61,101 +58,92 @@ npm run preview
 
 ```text
 src/
-├── components/
-│   ├── Quiz.tsx
-│   └── quiz/
-│       ├── HomeScreen.tsx
-│       ├── QuizScreen.tsx
-│       ├── ResultScreen.tsx
-│       ├── QuestionPrompt.tsx
-│       ├── ReviewQuestionCard.tsx
-│       ├── ThemeToggle.tsx
-│       ├── types.ts
-│       └── utils.ts
+├── content.config.ts          # Zod schema for question files
 ├── content/
-│   └── questions/
-├── content.config.ts
-├── pages/
-│   ├── index.astro
-│   └── quiz.astro
-└── styles/
-    └── global.css
+│   ├── categories.ts          # Domain and topic definitions
+│   └── questions/             # One .md file per topic
+├── components/
+│   ├── HomePage.tsx
+│   ├── QuizPage.tsx
+│   ├── ResultsPage.tsx
+│   ├── home/
+│   ├── quiz/
+│   ├── results/
+│   └── shared/
+└── pages/
+    ├── index.astro
+    ├── quiz.astro
+    └── results.astro
 ```
 
 ## Authoring Questions
 
-Questions live in `src/content/questions/*.md`.
-
-Each file contains frontmatter shaped like:
+Questions live in `src/content/questions/*.md`. Each file maps to a topic.
 
 ```yaml
 ---
-category: "React"
+defaultDomains: ["computer-science"]
+defaultTopics: ["design-patterns"]
 questions:
-  - q: |
-      const x = 1;
-      // What is logged?
+  - q: "What does this print and why?"
+    code: |
+      a = DatabasePool()
+      b = DatabasePool()
+      a.connections.append("conn1")
+      print(len(b.connections))
     options:
-      - text: "1"
+      - text: "1 -- a and b are the same object"
         correct: true
-      - text: "2"
+      - text: "0 -- b is a fresh instance"
         correct: false
-      - text: "undefined"
+      - text: "Error -- __new__ raises on second call"
         correct: false
-      - text: "null"
+      - text: "1 -- b copies a's state"
         correct: false
-    explanation: "Explain why."
-    isCode: true
-    difficulty: "junior"
+    explanation: "Singleton pattern. __new__ returns the same instance..."
+    difficulty: "mid"
 ---
 ```
 
-### Rules
+### Question fields
 
-- Exactly one option must use `correct: true`.
-- `difficulty` must be one of:
-  - `junior`
-  - `mid`
-  - `senior`
-  - `principal`
-- `isCode: true` enables code-question rendering.
-- For code questions, trailing `// ...` line is treated as prompt text and displayed before code.
-- Category strings should stay consistent across files.
+| Field | Required | Description |
+|---|---|---|
+| `q` | Yes | Plain question text — always rendered as readable text |
+| `code` | No | Code snippet rendered in a monospace block |
+| `options` | Yes | 2–5 options, exactly one with `correct: true` |
+| `explanation` | Yes | Teach the concept, not just reveal the answer |
+| `difficulty` | Yes | `junior` / `mid` / `senior` / `principal` |
+| `domains` | No | Per-question domain override |
+| `topics` | No | Per-question topic override |
 
-## Adding a New Category
+### Domain conventions
 
-1. Create a new Markdown file in `src/content/questions/`.
-2. Use a new `category` name in frontmatter.
-3. Add category badge mapping in `src/components/quiz/utils.ts` under `CATEGORY_COLORS`.
-4. Run `npm run build` to validate schema and output.
+| Domain | Language used in questions |
+|---|---|
+| `computer-science` | Python or pseudocode |
+| `frontend` | JavaScript, TypeScript, React, browser APIs |
+| `backend` | Node.js, Python, or server-side concepts |
+| `data-infra` | SQL, CLI tools, or conceptual |
 
-If no badge mapping exists, category falls back to `badge-neutral`.
+## Adding a New Topic
+
+1. Add an entry to `TOPIC_OPTIONS` in `src/content/categories.ts`.
+2. Create `src/content/questions/<slug>.md` with matching `defaultDomains` and `defaultTopics`.
+3. Run `npm run build` to validate.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ## Quiz Behavior
 
-- Questions are loaded at build time through Astro content collections.
-- `sampleEvenlyByCategory()` attempts balanced picks across selected categories.
-- `buildShuffled()` randomizes question order and option order.
-- Answer correctness is attached to option objects, so correctness survives shuffling.
-- Theme is stored in `localStorage` and synced to `document.documentElement.dataset.theme`.
+- `sampleEvenlyByTopic()` picks questions evenly across selected topics.
+- `buildShuffled()` randomizes question order and option order independently.
+- Answer correctness travels with the option object — survives shuffling.
+- Quiz config is encoded in the URL so sessions can resume after a page refresh.
 
 ## Deployment
 
-This project builds as a static Astro site and works well on Vercel with standard settings:
+Static Astro site. Works on Vercel with default settings:
 
 - Build command: `npm run build`
 - Output directory: `dist`
-
-## Scripts
-
-```json
-{
-  "dev": "astro dev",
-  "build": "astro build",
-  "preview": "astro preview"
-}
-```
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md).

@@ -1,14 +1,17 @@
 ---
 import { getCollection } from 'astro:content';
-import Quiz from '../components/Quiz';
+import FooterBar from '../components/FooterBar.astro';
+import QuizPage from '../components/QuizPage';
 import '../styles/global.css';
 
 const entries = await getCollection('questions');
 
 const questions = entries.flatMap(entry =>
-  entry.data.questions.map(q => ({
+  entry.data.questions.map((q, index) => ({
     ...q,
-    category: entry.data.category,
+    questionId: `${entry.id}:${index}`,
+    domains: q.domains ?? entry.data.defaultDomains,
+    topics: q.topics ?? entry.data.defaultTopics,
   }))
 );
 ---
@@ -21,13 +24,14 @@ const questions = entries.flatMap(entry =>
     <title>AssesLab</title>
     <script is:inline>
       const storedTheme = localStorage.getItem('theme');
-      const legacyTheme = storedTheme === 'dark' ? 'business' : storedTheme;
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'business' : 'light';
-      const theme = legacyTheme === 'light' || legacyTheme === 'business' ? legacyTheme : systemTheme;
+      const legacyTheme = storedTheme === 'dark' ? 'dark' : storedTheme;
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      const theme = legacyTheme === 'light' || legacyTheme === 'dark' ? legacyTheme : systemTheme;
       document.documentElement.dataset.theme = theme;
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
-    <Quiz questions={questions} initialPath="/quiz" client:load />
+    <QuizPage questions={questions} client:load />
+    <FooterBar />
   </body>
 </html>

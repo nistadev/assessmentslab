@@ -6,10 +6,13 @@ const difficultyEnum = z.enum(['junior', 'mid', 'senior', 'principal']);
 const questions = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/questions' }),
   schema: z.object({
-    category: z.string(),
+    defaultDomains: z.array(z.string()).min(1),
+    defaultTopics: z.array(z.string()).min(1),
     questions: z.array(
       z.object({
         q: z.string(),
+        domains: z.array(z.string()).min(1).optional(),
+        topics: z.array(z.string()).min(1).optional(),
         options: z.array(
           z.object({
             text: z.string(),
@@ -17,7 +20,7 @@ const questions = defineCollection({
           })
         ),
         explanation: z.string(),
-        isCode: z.boolean().default(false),
+        code: z.string().optional(),
         difficulty: difficultyEnum,
       })
     ),

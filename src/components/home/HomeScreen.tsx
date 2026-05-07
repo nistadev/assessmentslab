@@ -1,0 +1,434 @@
+import { useEffect, useState } from 'react';
+import { DOMAIN_OPTIONS, TOPIC_OPTIONS, getDomainLabel, getTopicLabel } from '../../content/categories';
+import type { FeedbackMode, Question, QuestionDifficulty, QuizConfig, StoredQuizHistoryEntry, Theme } from '../shared/types';
+import { NavHeader } from '../shared/NavHeader';
+import { buildQuizSearchParams, DIFFICULTY_LABELS, DIFFICULTY_OPTIONS, matchesDifficulty, questionMatchesSelection, readStoredQuizHistory } from '../shared/utils';
+
+function getAvailableCount(
+  questions: Question[],
+  domains: string[],
+  topics: string[],
+  difficulties: QuestionDifficulty[],
+) {
+  return questions.filter(q =>
+    questionMatchesSelection(q, domains, topics) && matchesDifficulty(q, difficulties)
+  ).length;
+}
+
+function getInitialDomainSelection(domains: string[], initialConfig?: QuizConfig | null) {
+  if (initialConfig?.domains.length) return initialConfig.domains;
+  if (domains.length === 0) return [];
+  return [];
+}
+
+function getInitialTopicSelection(topics: string[], domains: string[], initialConfig?: QuizConfig | null) {
+  if (initialConfig?.topics.length) return initialConfig.topics;
+  return getTopicsForDomains(topics, domains);
+}
+
+function getTopicsForDomains(topics: string[], domains: string[]) {
+  const selectedDomains = new Set(domains);
+  return topics.filter(topic => {
+    const option = TOPIC_OPTIONS.find(item => item.topic === topic);
+    return option ? option.domains.some(domain => selectedDomains.has(domain)) : true;
+  });
+}
+
+export function HomeScreen({
+  domains,
+  topics,
+  totalQ,
+  questions,
+  onStart,
+  initialConfig,
+  theme,
+  onToggleTheme,
+}: {
+  domains: string[];
+  topics: string[];
+  totalQ: number;
+  questions: Question[];
+  onStart: (
+    selectedDomains: string[],
+    selectedTopics: string[],
+    timerMinutes: number,
+    maxQuestions: number,
+    feedbackMode: FeedbackMode,
+    difficulties: QuestionDifficulty[],
+  ) => void;
+  initialConfig?: QuizConfig | null;
+  theme: Theme;
+  onToggleTheme: () => void;
+}) {
+  const initialDomains = getInitialDomainSelection(domains, initialConfig);
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(() => initialDomains);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>(() => getInitialTopicSelection(topics, initialDomains, initialConfig));
+  const [difficulties, setDifficulties] = useState<QuestionDifficulty[]>(
+    initialConfig?.difficulties ?? DIFFICULTY_OPTIONS
+  );
+  const [timerMinutes, setTimerMinutes] = useState(initialConfig?.timerMinutes ?? 10);
+  const [maxQuestions, setMaxQuestions] = useState(initialConfig?.maxQuestions ?? 20);
+  const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(initialConfig?.feedbackMode ?? 'end');
+  const [history, setHistory] = useState<StoredQuizHistoryEntry[]>([]);
+  const visibleTopics = getTopicsForDomains(topics, selectedDomains);
+  const visibleTopicSet = new Set(visibleTopics);
+  const domainOptions = domains.map(domain =>
+    DOMAIN_OPTIONS.find(option => option.domain === domain) ?? {
+      domain,
+      name: getDomainLabel(domain),
+      description: 'Custom practice domain.',
+    }
+  );
+
+  useEffect(() => {
+    if (!initialConfig) return;
+
+    setSelectedDomains(initialConfig.domains);
+    setSelectedTopics(initialConfig.topics);
+    setDifficulties(initialConfig.difficulties);
+    setTimerMinutes(initialConfig.timerMinutes);
+    setMaxQuestions(initialConfig.maxQuestions);
+    setFeedbackMode(initialConfig.feedbackMode);
+  }, [initialConfig]);
+
+  useEffect(() => {
+    setHistory(readStoredQuizHistory());
+  }, []);
+
+  useEffect(() => {
+    setSelectedTopics(current => {
+      const next = current.filter(topic => visibleTopicSet.has(topic));
+      return [...new Set([...next, ...visibleTopics])];
+    });
+  }, [selectedDomains]);
+
+  const toggleDomain = (domain: string) =>
+    setSelectedDomains(current => current.includes(domain)
+      ? current.filter(item => item !== domain)
+      : [...current, domain]
+    );
+  const toggleAllDomains = () =>
+    setSelectedDomains(current => current.length === domains.length ? [] : domains);
+  const toggleTopic = (topic: string) =>
+    setSelectedTopics(current => current.includes(topic)
+      ? current.filter(item => item !== topic)
+      : [...current, topic]
+    );
+  const toggleAllVisibleTopics = () =>
+    setSelectedTopics(current => {
+      const allSelected = visibleTopics.every(topic => current.includes(topic));
+
+      if (allSelected) {
+        return current.filter(topic => !visibleTopics.includes(topic));
+      }
+
+      return [...new Set([...current, ...visibleTopics])];
+    });
+  const toggleDifficulty = (difficulty: QuestionDifficulty) =>
+    setDifficulties(current =>
+      current.includes(difficulty)
+        ? current.filter(level => level !== difficulty)
+        : [...current, difficulty]
+    );
+
+  const availableCount = getAvailableCount(questions, selectedDomains, selectedTopics, difficulties);
+
+  useEffect(() => {
+    setMaxQuestions(Math.min(20, availableCount || 1));
+  }, [availableCount]);
+
+  return (
+    <div className="relative min-h-screen flex items-start justify-center px-4 py-2">
+      <div className="w-full max-w-2xl space-y-6">
+        <NavHeader theme={theme} onToggleTheme={onToggleTheme} />
+        <div className="card brand-shell">
+          <div className="card-body gap-5">
+            <div className="space-y-3">
+              <div>
+                <h1 className="brand-heading">Stress-test your engineering instincts.</h1>
+                <p className="text-base-content/70 mt-2 max-w-xl">
+                  AssesLab drills interview-grade questions across development disciplines with shuffled runs, timed rounds, and tight feedback loops.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">Domains</p>
+                  <p className="text-xs text-base-content/50">
+                    Pick where questions should apply. {selectedDomains.length}/{domains.length} selected.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={toggleAllDomains}
+                >
+                  {selectedDomains.length === domains.length ? 'Clear All' : 'Select All'}
+                </button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {domainOptions.map(option => (
+                  <label
+                    key={option.domain}
+                    className={`flex min-h-24 cursor-pointer gap-3 rounded-xl border p-3 transition-colors select-none ${
+                      selectedDomains.includes(option.domain)
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-base-content/20 text-base-content/70 hover:border-base-content/40'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-primary checkbox-sm mt-1"
+                      checked={selectedDomains.includes(option.domain)}
+                      onChange={() => toggleDomain(option.domain)}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">{option.name}</span>
+                      <span className="mt-1 block text-xs opacity-70">{option.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">Topics</p>
+                  <p className="text-xs text-base-content/50">
+                    Shared topics only include questions tagged for selected domains. {selectedTopics.length} selected.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={toggleAllVisibleTopics}
+                  disabled={visibleTopics.length === 0}
+                >
+                  {visibleTopics.length > 0 && visibleTopics.every(topic => selectedTopics.includes(topic)) ? 'Clear All' : 'Select All'}
+                </button>
+              </div>
+              {visibleTopics.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {visibleTopics.map(topic => (
+                    <label
+                      key={topic}
+                      className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors select-none ${
+                        selectedTopics.includes(topic)
+                          ? 'border-primary/30 bg-primary/8 text-primary/80'
+                          : 'border-base-content/20 text-base-content/50 hover:border-base-content/40'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-primary checkbox-sm"
+                        checked={selectedTopics.includes(topic)}
+                        onChange={() => toggleTopic(topic)}
+                      />
+                      <span className="text-sm font-medium">{getTopicLabel(topic)}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-base-content/20 bg-base-200/40 px-4 py-3 text-sm text-base-content/55">
+                  Pick domain first to reveal topics.
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="form-control sm:col-span-2">
+                <div className="label pb-1">
+                  <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">Difficulty</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {DIFFICULTY_OPTIONS.map(option => (
+                    <label
+                      key={option}
+                      className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors select-none ${
+                        difficulties.includes(option)
+                          ? 'border-primary/30 bg-primary/8 text-primary/80'
+                          : 'border-base-content/20 text-base-content/50 hover:border-base-content/40'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-primary checkbox-sm"
+                        checked={difficulties.includes(option)}
+                        onChange={() => toggleDifficulty(option)}
+                      />
+                      <span className="text-sm font-medium">{DIFFICULTY_LABELS[option]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-control">
+                <div className="label pb-1">
+                  <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">Timer (min)</span>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  step={1}
+                  className="input input-bordered w-full"
+                  value={timerMinutes}
+                  onChange={e => setTimerMinutes(Math.max(1, Number(e.target.value) || 1))}
+                />
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {[1, 5, 10, 20].map(min => (
+                    <button
+                      key={min}
+                      type="button"
+                      className={`btn btn-sm sm:btn-xs ${timerMinutes === min ? 'btn-primary btn-soft border-primary/30' : 'btn-ghost border border-base-content/20'}`}
+                      onClick={() => setTimerMinutes(min)}
+                    >
+                      {min}m
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-control">
+                <div className="label items-center justify-between pb-1">
+                  <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">Max Questions</span>
+                  <span className="label-text-alt text-base-content/50">
+                    {totalQ} questions loaded
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={availableCount || 1}
+                  step={1}
+                  className="input input-bordered w-full"
+                  value={maxQuestions}
+                  onChange={e => setMaxQuestions(Math.max(1, Number(e.target.value) || 1))}
+                />
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {[5, 10, 20, 40].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={`btn btn-sm sm:btn-xs ${maxQuestions === n ? 'btn-primary btn-soft border-primary/30' : 'btn-ghost border border-base-content/20'}`}
+                      onClick={() => setMaxQuestions(Math.min(n, availableCount || 1))}
+                      disabled={(availableCount || 0) < n}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`btn btn-sm sm:btn-xs ${maxQuestions === availableCount ? 'btn-primary btn-soft border-primary/30' : 'btn-ghost border border-base-content/20'}`}
+                    onClick={() => setMaxQuestions(availableCount || 1)}
+                  >
+                    Max
+                  </button>
+                </div>
+                <div className="label pt-1">
+                  <span className="label-text-alt text-base-content/50">
+                    Up to {availableCount} available
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-3 text-base-content/70 uppercase tracking-wide">Response Mode</p>
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${feedbackMode === 'end' ? 'btn-primary btn-soft border-primary/30' : 'btn-ghost border border-base-content/20'}`}
+                  onClick={() => setFeedbackMode('end')}
+                  aria-pressed={feedbackMode === 'end'}
+                >
+                  Show only at the end
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${feedbackMode === 'immediate' ? 'btn-primary btn-soft border-primary/30' : 'btn-ghost border border-base-content/20'}`}
+                  onClick={() => setFeedbackMode('immediate')}
+                  aria-pressed={feedbackMode === 'immediate'}
+                >
+                  Show response after check
+                </button>
+              </div>
+            </div>
+
+            <button
+              className="btn btn-primary w-full"
+              onClick={() => selectedDomains.length > 0
+                && selectedTopics.length > 0
+                && difficulties.length > 0
+                && availableCount > 0
+                && onStart(selectedDomains, selectedTopics, timerMinutes, maxQuestions, feedbackMode, difficulties)}
+              disabled={selectedDomains.length === 0 || selectedTopics.length === 0 || difficulties.length === 0 || availableCount === 0}
+            >
+              Start Test →
+            </button>
+          </div>
+        </div>
+
+        {history.length > 0 && (
+          <div className="card brand-shell">
+            <div className="card-body gap-4">
+              <div>
+                <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">Latest Assesments</p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {history.map(entry => {
+                  const params = buildQuizSearchParams(entry.config, entry.uid);
+                  const resultUrl = `/results?${params.toString()}`;
+                  const accuracyRatio = entry.result.score / Math.max(entry.result.answers.length, 1);
+                  const speedRatio = Math.max(
+                    0,
+                    (entry.result.totalSeconds - entry.result.elapsedSeconds) / Math.max(entry.result.totalSeconds, 1),
+                  );
+                  const performancePct = Math.round(((accuracyRatio * 0.9) + (speedRatio * 0.1)) * 100);
+                  const minutes = Math.floor(entry.result.elapsedSeconds / 60);
+                  const seconds = String(entry.result.elapsedSeconds % 60).padStart(2, '0');
+
+                  return (
+                    <button
+                      key={entry.uid}
+                      type="button"
+                      className="cursor-pointer text-left rounded-xl border border-base-content/10 bg-base-200/80 px-3 py-3 transition-all hover:bg-base-200 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-primary)_20%,transparent),0_0_18px_-6px_color-mix(in_oklab,var(--color-primary)_38%,transparent)]"
+                      onClick={() => window.location.assign(resultUrl)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-base-content">
+                            {entry.config.domains.map(getDomainLabel).join(', ')} · {entry.config.topics.map(getTopicLabel).join(', ')}
+                          </p>
+                          <p className="mt-1 text-[11px] text-base-content/50">
+                            Latest taken at: {new Date(entry.result.finishedAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="badge badge-primary badge-md">{performancePct}%</span>
+                          <p className="mt-1 text-[11px] text-base-content/50">
+                            {entry.trialCount} {entry.trialCount === 1 ? 'trial' : 'trials'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-base-content/65">
+                        <span className="badge badge-outline badge-sm">{entry.result.score}/{entry.result.answers.length} correct</span>
+                        <span className="badge badge-outline badge-sm">{minutes}:{seconds}</span>
+                        <span className="badge badge-outline badge-sm">{entry.config.maxQuestions} max</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

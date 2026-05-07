@@ -1,9 +1,9 @@
-import { ThemeToggle } from './ThemeToggle';
+import { NavHeader } from '../shared/NavHeader';
 import { QuestionPrompt } from './QuestionPrompt';
 import { QuizOptionList } from './QuizOptionList';
 import { FeedbackBanner } from './FeedbackBanner';
-import { getCategoryBadge } from './utils';
-import type { FeedbackMode, ShuffledQuestion, Theme } from './types';
+import { getQuestionPrimaryTopic, getQuestionTopicLabel, getTopicBadge } from '../shared/utils';
+import type { FeedbackMode, ShuffledQuestion, Theme } from '../shared/types';
 
 export function QuizScreen({
   question,
@@ -51,49 +51,39 @@ export function QuizScreen({
   const totalSecs = String(totalTime % 60).padStart(2, '0');
 
   return (
-    <div className="quiz-plain-bg relative min-h-screen flex flex-col items-center py-6 px-4">
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm fixed left-4 top-4 z-20 border border-base-content/10 bg-base-100/80 backdrop-blur"
-        onClick={onBack}
-        aria-label="Back to quiz setup"
-      >
-        &larr; Back
-      </button>
-      <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+    <div className="quiz-plain-bg relative min-h-screen flex flex-col items-center py-3 px-4">
       <div className="w-full max-w-5xl">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <span className="brand-chip">AssesLab</span>
-          <div className="flex items-center gap-4">
-            <span className={`font-mono font-bold text-lg ${timerDanger ? 'text-error' : 'text-base-content'}`}>
-              {mins}:{secs}
-            </span>
-            <span className="text-base-content/50 text-sm whitespace-nowrap">
-              {qIdx + 1} / {total}
-            </span>
-          </div>
-        </div>
-
-        <div className="mb-5 space-y-3">
+        <NavHeader
+          leftLabel="← Back"
+          onLeftAction={onBack}
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+        />
+        <div className="mb-4 space-y-2">
           <div>
-            <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/60">
               <span>Time</span>
-              <span>{elapsedMins}:{elapsedSecs} / {totalMins}:{totalSecs}</span>
+              <div className="flex items-center gap-3">
+                <span className={`font-mono text-[12px] font-bold normal-case tracking-normal ${timerDanger ? 'text-error' : 'text-base-content'}`}>
+                  {mins}:{secs}
+                </span>
+                <span>{elapsedMins}:{elapsedSecs} / {totalMins}:{totalSecs}</span>
+              </div>
             </div>
             <progress
-              className="progress progress-primary w-full"
+              className="progress progress-primary h-2 w-full"
               value={elapsedTime}
               max={totalTime}
             />
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-base-content/60">
+            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/60">
               <span>Answered</span>
               <span>{answeredCount} / {total}</span>
             </div>
             <progress
-              className="progress progress-secondary w-full"
+              className="progress progress-secondary h-2 w-full"
               value={answeredCount}
               max={total}
             />
@@ -104,14 +94,14 @@ export function QuizScreen({
           <div className="card brand-shell">
             <div className="card-body p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <span className={`badge ${getCategoryBadge(question.category)} badge-md`}>
-                  {question.category}
+                <span className={`badge ${getTopicBadge(getQuestionPrimaryTopic(question))} badge-md`}>
+                  {getQuestionTopicLabel(question)}
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-wide text-base-content/45">
                   Question {qIdx + 1}
                 </span>
               </div>
-              <QuestionPrompt q={question.q} isCode={question.isCode} />
+              <QuestionPrompt q={question.q} code={question.code} />
             </div>
           </div>
 

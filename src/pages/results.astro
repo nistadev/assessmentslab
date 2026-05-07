@@ -1,19 +1,7 @@
 ---
-import { getCollection } from 'astro:content';
 import FooterBar from '../components/FooterBar.astro';
-import HomePage from '../components/HomePage';
+import ResultsPage from '../components/ResultsPage';
 import '../styles/global.css';
-
-const entries = await getCollection('questions');
-
-const questions = entries.flatMap(entry =>
-  entry.data.questions.map((q, index) => ({
-    ...q,
-    questionId: `${entry.id}:${index}`,
-    domains: q.domains ?? entry.data.defaultDomains,
-    topics: q.topics ?? entry.data.defaultTopics,
-  }))
-);
 ---
 
 <!doctype html>
@@ -21,7 +9,7 @@ const questions = entries.flatMap(entry =>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AssesLab</title>
+    <title>AssesLab Results</title>
     <script is:inline>
       const storedTheme = localStorage.getItem('theme');
       const legacyTheme = storedTheme === 'dark' ? 'dark' : storedTheme;
@@ -31,7 +19,7 @@ const questions = entries.flatMap(entry =>
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
-    <HomePage questions={questions} client:load />
+    <ResultsPage client:load />
     <FooterBar />
   </body>
 </html>

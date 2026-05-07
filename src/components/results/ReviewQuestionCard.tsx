@@ -1,24 +1,27 @@
-import type { Answer } from './types';
-import { getCategoryBadge } from './utils';
-import { QuestionPrompt } from './QuestionPrompt';
-import { FeedbackBanner } from './FeedbackBanner';
+import type { Answer } from '../shared/types';
+import { getDifficultyLabel, getQuestionPrimaryTopic, getQuestionTopicLabel, getTopicBadge } from '../shared/utils';
+import { QuestionPrompt } from '../quiz/QuestionPrompt';
+import { FeedbackBanner } from '../quiz/FeedbackBanner';
 
 export function ReviewQuestionCard({ answer }: { answer: Answer }) {
   return (
-    <div className="collapse collapse-arrow bg-base-200">
+    <div className="collapse collapse-arrow brand-shell">
       <input type="checkbox" />
       <div className="collapse-title flex items-center gap-2 text-sm">
         {answer.correct
           ? <span className="text-success font-bold text-base">✓</span>
           : <span className="text-error font-bold text-base">✗</span>
         }
-        <span className={`badge badge-sm ${getCategoryBadge(answer.question.category)}`}>
-          {answer.question.category}
+        <span className={`badge badge-sm ${getTopicBadge(getQuestionPrimaryTopic(answer.question))}`}>
+          {getQuestionTopicLabel(answer.question)}
+        </span>
+        <span className="badge badge-outline badge-sm">
+          {getDifficultyLabel(answer.question.difficulty)}
         </span>
         <span className="truncate text-base-content/70">{answer.question.q.split('\n')[0]}</span>
       </div>
       <div className="collapse-content">
-        <QuestionPrompt q={answer.question.q} isCode={answer.question.isCode} />
+        <QuestionPrompt q={answer.question.q} code={answer.question.code} />
 
         <div className="flex flex-col gap-1.5 mb-4 mt-3">
           {answer.question.shuffledOptions.map((opt, oi) => {

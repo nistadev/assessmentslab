@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-`solotestskills` is a self-paced quiz app for practicing frontend engineering interview topics. Built with **Astro + React** (island architecture) and **daisyUI**. Questions are authored in Markdown files and loaded at build time via Astro content collections.
+`solotestskills` is a self-paced quiz app for practicing software engineering interview topics. Built with **Astro + React** (island architecture) and **daisyUI**. Questions are authored in Markdown files and loaded at build time via Astro content collections.
 
 ---
 
@@ -12,7 +12,7 @@
 |---|---|
 | Framework | Astro 6 |
 | UI | React 18 (client island via `client:load`) |
-| Styling | Tailwind CSS 4 + daisyUI themes (`light` / `business`) |
+| Styling | Tailwind CSS 4 + daisyUI themes (`light` / `dark`) |
 | Content | Astro Content Collections (YAML frontmatter in `.md`) |
 | Type safety | TypeScript + Zod (schema validation on content) |
 | Runtime | Node.js |
@@ -25,135 +25,180 @@
 src/
 ├── content.config.ts           # Zod schema + glob loader for all question files
 ├── content/
+│   ├── categories.ts           # Domain and topic definitions
 │   └── questions/
-│       ├── react.md
-│       ├── typescript.md
-│       ├── solid-principles.md
+│       ├── algorithms.md
+│       ├── angular.md
+│       ├── backend.md
+│       ├── data-engineering.md
+│       ├── data-structures.md
 │       ├── design-patterns.md
-│       └── data-structures.md
+│       ├── devops.md
+│       ├── frontend.md
+│       ├── nodejs.md
+│       ├── python.md
+│       ├── react.md
+│       ├── solid-principles.md
+│       └── typescript.md
 ├── components/
-│   ├── Quiz.tsx                # Thin state container / screen orchestrator
-│   └── quiz/                   # Reusable quiz UI pieces
-│       ├── HomeScreen.tsx
-│       ├── QuizScreen.tsx
-│       ├── ResultScreen.tsx
-│       ├── ThemeToggle.tsx
-│       ├── QuestionPrompt.tsx
-│       ├── QuizOptionList.tsx
-│       ├── FeedbackBanner.tsx
-│       ├── ReviewQuestionCard.tsx
-│       ├── types.ts
-│       └── utils.ts
+│   ├── HomePage.tsx            # Home page island
+│   ├── QuizPage.tsx            # Quiz session island
+│   ├── ResultsPage.tsx         # Results island
+│   ├── FooterBar.astro
+│   ├── home/
+│   │   └── HomeScreen.tsx      # Domain/topic/config selection UI
+│   ├── quiz/
+│   │   ├── QuizScreen.tsx
+│   │   ├── QuestionPrompt.tsx
+│   │   ├── QuizOptionList.tsx
+│   │   └── FeedbackBanner.tsx
+│   ├── results/
+│   │   ├── ResultScreen.tsx
+│   │   └── ReviewQuestionCard.tsx
+│   └── shared/
+│       ├── types.ts            # Shared TypeScript types
+│       └── utils.ts            # Shuffle, sampling, URL params, scoring
 └── pages/
-    └── index.astro             # Loads all MD files, passes questions to Quiz
+    ├── index.astro             # Loads all MD files, passes questions to HomePage
+    ├── quiz.astro              # Loads all MD files, passes questions to QuizPage
+    └── results.astro           # Results page
 ```
+
+---
+
+## Domain and Topic System
+
+Domains and topics are defined in `src/content/categories.ts`. Questions are filtered by both.
+
+### Domains
+
+| Domain | Description |
+|---|---|
+| `frontend` | Browser platform, frontend frameworks (React, Angular), and client-side engineering |
+| `backend` | Server-side patterns: APIs, databases, DDD, file I/O, integrations |
+| `computer-science` | Language-agnostic fundamentals: algorithms, data structures, design patterns, SOLID |
+| `data-infra` | Data systems, pipelines, deployments, and operations |
+
+### Topics and their domains
+
+| Topic key | Display name | Domains |
+|---|---|---|
+| `frontend` | Web Platform | `frontend` |
+| `javascript-typescript` | JavaScript / TypeScript | `frontend`, `backend` |
+| `react` | React | `frontend` |
+| `angular` | Angular | `frontend` |
+| `backend` | Backend | `backend` |
+| `nodejs` | Node.js | `backend` |
+| `python` | Python | `backend` |
+| `algorithms` | Algorithms | `computer-science` |
+| `data-structures` | Data Structures | `computer-science` |
+| `design-patterns` | Design Patterns | `computer-science`, `frontend` |
+| `solid-principles` | SOLID Principles | `computer-science`, `frontend` |
+| `data-engineering` | Data Engineering | `data-infra` |
+| `devops` | DevOps | `data-infra` |
+
+### Language conventions per domain
+
+- **`computer-science`** — Python or pseudocode. No framework imports.
+- **`frontend`** — JavaScript, TypeScript, React, browser APIs. No server-side code.
+- **`backend`** — Node.js, Python, or language-agnostic server concepts.
+- **`data-infra`** — Tool-specific (SQL, CLI, config snippets) or conceptual.
 
 ---
 
 ## Question File Format
 
-Every file in `src/content/questions/` follows this YAML frontmatter schema:
+Every file in `src/content/questions/` uses this YAML frontmatter schema:
 
 ```yaml
 ---
-category: "React"          # Displayed as a badge. Must match CATEGORY_COLORS in src/components/quiz/utils.ts to get a color.
+defaultDomains: ["frontend"]           # Domains for ALL questions in this file unless overridden.
+defaultTopics: ["react"]               # Topics for ALL questions in this file unless overridden.
 questions:
-  - q: |                   # The question text. Use | for multiline (code snippets go here).
-      function foo() {}
-      // What does this return?
+  - q: "What does Button receive?"     # Plain question text. Always rendered as text.
+    code: |                            # Optional. Code snippet rendered in a monospace block.
+      function withLogger(Component) {
+        return function Logged(props) {
+          return <Component {...props} />;
+        };
+      }
+    domains: ["frontend"]              # Optional. Overrides defaultDomains for this question only.
+    topics: ["react", "design-patterns"] # Optional. Overrides defaultTopics for this question only.
     options:
       - text: "Option A"
         correct: false
-      - text: "Option B"   # Mark the correct answer here
+      - text: "Option B"
         correct: true
       - text: "Option C"
         correct: false
       - text: "Option D"
         correct: false
     explanation: "Explain why the answer is correct and the production context."
-    isCode: true           # true = renders question in <pre> monospace block
+    difficulty: "junior"               # Required. One of: junior | mid | senior | principal
 ---
 ```
 
-**Rules:**
-- Exactly one option per question must have `correct: true`.
-- Options are shuffled at runtime on every quiz start — the `correct` flag travels with the option, so order in the file does not matter for correctness.
+### Field rules
+
+| Field | Required | Notes |
+|---|---|---|
+| `q` | Yes | Plain question text. Always rendered as a `<p>`. |
+| `code` | No | Code snippet. Rendered in a `<pre>` monospace block above the options. |
+| `options` | Yes | Exactly one must have `correct: true`. |
+| `explanation` | Yes | Teach the concept, not just reveal the answer. |
+| `difficulty` | Yes | `junior` / `mid` / `senior` / `principal` |
+| `domains` | No | Per-question override for `defaultDomains`. |
+| `topics` | No | Per-question override for `defaultTopics`. |
+
+- Options are shuffled on every quiz start — `correct` flag travels with the option.
 - Questions across all files are also shuffled before each quiz start.
-- The `isCode` flag controls whether `QuestionPrompt` splits code from the trailing prompt. It also affects result review rendering.
 
 ---
 
-## Adding a New Category
+## Domain and Topic Tagging Rules
 
-1. Create `src/content/questions/<slug>.md` with the frontmatter schema above.
-2. Add the category name to `CATEGORY_COLORS` in `src/components/quiz/utils.ts`:
+- `defaultDomains` / `defaultTopics` must accurately reflect the content in the file. A file of React HOC questions belongs in `["frontend"]`, not `["computer-science"]`.
+- Use per-question `domains` / `topics` overrides when a question doesn't match the file's defaults.
+- Tags are exclusive by domain: a question tagged `domains: ["frontend"]` will NOT appear in a `computer-science` quiz.
+- Use multiple domains only when the question genuinely tests both (e.g., a TypeScript generics question is legitimately `["frontend", "backend"]`).
+- `design-patterns` and `solid-principles` topics appear under both `computer-science` and `frontend`. CS-domain questions use Python; frontend-domain questions use React. This is enforced by the per-file `defaultDomains` and per-question overrides in `react.md`.
+
+---
+
+## Adding a New Topic
+
+1. Add an entry to `TOPIC_OPTIONS` in `src/content/categories.ts`:
    ```ts
-   const CATEGORY_COLORS: Record<string, string> = {
-     'Your Category': 'badge-info',
-   };
+   { topic: 'your-topic', name: 'Your Topic', domains: ['frontend'] }
    ```
-3. No other changes needed — Astro's `getCollection('questions')` picks up all files automatically.
+2. Create `src/content/questions/<your-topic>.md` with matching `defaultTopics` and `defaultDomains`.
+3. No other changes — `getCollection('questions')` picks up all files automatically.
 
 ---
 
-## Adding Questions to an Existing Category
+## Adding Questions to an Existing File
 
-Open the relevant `.md` file and append a new entry to the `questions` array. Zod validates the schema at build time — `npm run build` will fail with a clear error if a question is malformed.
+Append a new entry to the `questions` array. Zod validates schema at build time — `npm run build` fails with a clear error if a question is malformed.
 
 ---
 
 ## Key Components
 
-### `src/components/Quiz.tsx`
+### `QuestionPrompt.tsx`
 
-Thin React orchestrator. Owns quiz state, timer, theme, and screen switching. UI lives in `src/components/quiz/`.
+Renders a question. If `code` is present, shows `q` as a heading above a `<pre>` code block. If no `code`, shows `q` as a plain paragraph. No parsing, no flags.
 
-| Screen | Component | Trigger |
-|---|---|---|
-| Category selection + start | `HomeScreen` | Initial load |
-| Active quiz | `QuizScreen` | After start |
-| Results with expandable review | `ResultScreen` | Quiz complete or timer hits 0 |
+### `src/components/shared/utils.ts`
 
-**Shuffle logic:**
-- `shuffleArray<T>()` — Fisher-Yates in-place shuffle, returns new array.
-- `sampleEvenlyByCategory()` — picks questions across selected categories in a round-robin style so max question count stays balanced.
-- `buildShuffled()` — shuffles question order AND shuffles each question's options independently. The `correct` flag is preserved on the option object so scoring never depends on position.
-
-**Timer:** configurable on the home screen. Stored as minutes, converted to seconds in `startQuiz`.
-
-**Quiz config on home screen:**
-- Category selection
-- Timer length
-- Max questions
-- Response mode:
-  - `Show response after check`
-  - `Show only at the end`
-
-**Scoring:** `answer.correct` is derived from `shuffledOptions[selectedIndex].correct` at confirm time.
-
-**Theme:** uses daisyUI theme names, not arbitrary strings. Light mode is `light`; dark mode is `business`. Persisted theme values should stay in sync with `document.documentElement.dataset.theme`.
-
-### `src/components/quiz/*`
-
-Reusable presentational pieces:
-- `HomeScreen.tsx` - category/timer/max-questions/response-mode setup
-- `QuizScreen.tsx` - active question view
-- `ResultScreen.tsx` - score summary and review list
-- `ThemeToggle.tsx` - persistent light/dark switch
-- `QuestionPrompt.tsx` - renders code questions and plain questions
-- `QuizOptionList.tsx` - selectable answer list
-- `FeedbackBanner.tsx` - immediate feedback block
-- `ReviewQuestionCard.tsx` - expandable result review item
-- `types.ts` - shared quiz types
-- `utils.ts` - shuffle, sampling, category badges, code splitting
+- `shuffleArray<T>()` — Fisher-Yates shuffle.
+- `sampleEvenlyByTopic()` — balanced picks across topics.
+- `buildShuffled()` — shuffles question order and each question's options independently.
+- `questionMatchesSelection()` — domain + topic filter used at quiz start.
+- URL param helpers: `buildQuizSearchParams()` / `parseQuizSearchParams()`.
 
 ### `src/content.config.ts`
 
-Zod schema + glob loader that validates all question files at build time. If you add a new field to questions, add it here first. Uses `glob({ pattern: '**/*.md', base: './src/content/questions' })` as the collection loader (required by Astro 5+).
-
-### `src/pages/index.astro`
-
-Loads all question files with `getCollection('questions')`, flattens them into a single `Question[]` array, and passes to `<Quiz client:load />`. No client-side data fetching — all content is static at build time. Also boots the saved theme before React mounts.
+Zod schema + glob loader. Validates all question files at build time. If you add a new field to questions, add it here first.
 
 ---
 
@@ -161,7 +206,7 @@ Loads all question files with `getCollection('questions')`, flattens them into a
 
 ```bash
 npm run dev       # Start dev server at localhost:4321 with HMR
-npm run build     # Type-check + build (also validates all MD schemas via Zod)
+npm run build     # Type-check + build (validates all MD schemas via Zod)
 npm run preview   # Preview production build locally
 ```
 
@@ -169,17 +214,16 @@ npm run preview   # Preview production build locally
 
 ## Conventions
 
-- **Question text** should end with a clear prompt (`// What does this return?`, `// What is the bug?`, `// What is rendered?`).
-- **Explanations** should include: (1) the direct answer, (2) why wrong options are wrong or what the trap is, (3) a real-world production context where relevant.
-- **Code questions** use YAML block scalar `q: |` with a trailing comment as the actual question. Keep code snippets under 15 lines for readability in the quiz card.
-- **Category names** are strings — keep them consistent across files. Inconsistent casing creates duplicate categories in the UI.
-- Do not import anything into `.md` files. They are pure data — logic lives in `src/components/quiz/*`.
+- `q` is always a plain, complete question sentence — no embedded code, no comment markers.
+- Put code in the `code` field. Keep snippets under 15 lines for readability.
+- Explanations should cover: (1) the direct answer, (2) why wrong options are wrong, (3) a real-world production context.
+- Do not import anything into `.md` files — they are pure data.
+- CS-domain questions use Python or pseudocode. Frontend-domain questions use JS/TS/React.
 
 ---
 
 ## Known Constraints
 
-- `isCode` flag controls whether `QuestionPrompt` splits code from the trailing prompt. It also affects how result review renders the question.
 - No persistence — quiz state is in React memory only. Refreshing resets progress.
-- No routing — single page, screen state managed by `useState` in `Quiz.tsx`.
-- Theme persistence uses `localStorage` and `data-theme`.
+- No routing — screen state managed by `useState` in page-level island components.
+- Theme persistence uses `localStorage` and `data-theme` on `<html>`.

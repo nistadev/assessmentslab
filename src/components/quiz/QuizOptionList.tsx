@@ -1,4 +1,4 @@
-import type { ShuffledOption } from './types';
+import type { ShuffledOption } from '../shared/types';
 
 export function QuizOptionList({
   options,

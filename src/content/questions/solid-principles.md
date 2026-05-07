@@ -1,210 +1,225 @@
 ---
-category: "SOLID Principles"
+defaultDomains:
+  - computer-science
+defaultTopics:
+  - solid-principles
 questions:
-  - q: |
-      function Dashboard() {
-        const [user, setUser] = useState(null);
-        const [posts, setPosts] = useState([]);
-        const [theme, setTheme] = useState("light");
-        useEffect(() => { fetchUser().then(setUser); }, []);
-        useEffect(() => { fetchPosts().then(setPosts); }, []);
-        return (
-          <div className={theme}>
-            <Header user={user} onTheme={setTheme} />
-            <Feed posts={posts} />
-          </div>
-        );
+  - q: Three separate teams own email, invoice, and storage. What principle is violated and what is the consequence?
+    code: |-
+      class OrderService:
+          def place_order(self, cart):
+              total = sum(item.price for item in cart.items)
+              order = db.insert("orders", {"total": total})
+              email.send(cart.user.email, f"Order #{order.id} confirmed")
+              pdf = render_invoice(order)
+              storage.upload(f"invoices/{order.id}.pdf", pdf)
+              return order
+    options:
+      - text: SRP -- four responsibilities in one class mean any team must edit this file, causing merge conflicts and regression risk across unrelated concerns
+        correct: true
+      - text: DRY -- total is computed in multiple places
+        correct: false
+      - text: No violation -- service classes should orchestrate end-to-end flows
+        correct: false
+      - text: OCP -- adding a new order type requires modifying this class
+        correct: false
+    explanation: "Single Responsibility Principle. OrderService handles order persistence, email delivery, invoice generation, and file storage. Each team touching their concern risks breaking the others. Fix: extract EmailService, InvoiceService, StorageService. OrderService becomes a thin orchestrator. Rule of thumb: if more than one team must edit this file for unrelated reasons, it violates SRP."
+    difficulty: junior
+  - q: Adding Pentagon requires modifying this function. What principle is violated and what is the correct fix?
+    code: |-
+      def calculate_area(shape: dict) -> float:
+          if shape["type"] == "circle":
+              return 3.14159 * shape["radius"] ** 2
+          elif shape["type"] == "rectangle":
+              return shape["width"] * shape["height"]
+          elif shape["type"] == "triangle":
+              return 0.5 * shape["base"] * shape["height"]
+          raise ValueError("unknown shape")
+    options:
+      - text: OCP -- fix by defining a Shape protocol with area(); each shape implements it; calculate_area(s) becomes s.area()
+        correct: true
+      - text: SRP -- split into calculate_circle_area, calculate_rectangle_area, etc.
+        correct: false
+      - text: No violation -- extending the elif chain is the standard approach
+        correct: false
+      - text: DIP -- the function should receive an abstract Shape, not a dict
+        correct: false
+    explanation: "Open/Closed Principle: open for extension, closed for modification. Every new shape requires editing calculate_area, risking regressions on existing shapes. Fix: use a Protocol or ABC with area() → each shape class implements it → new shapes add a class, not a branch. The function shrinks to one line: return shape.area(). Python's typing.Protocol enables structural subtyping without inheritance."
+    difficulty: mid
+  - q: What happens? What principle is violated and why?
+    code: |-
+      class Bird:
+          def fly(self) -> str:
+              return "flying"
+
+      class Penguin(Bird):
+          def fly(self) -> str:
+              raise NotImplementedError("Penguins cannot fly")
+
+      def release(bird: Bird) -> str:
+          return bird.fly()
+
+      release(Penguin())
+    options:
+      - text: Raises NotImplementedError -- LSP violated because Penguin cannot substitute Bird without changing caller behavior
+        correct: true
+      - text: Returns 'flying' -- Penguin inherits the method
+        correct: false
+      - text: SRP violated -- Bird should not have a fly() method
+        correct: false
+      - text: No violation -- NotImplementedError is a valid override
+        correct: false
+    explanation: "Liskov Substitution Principle: a subtype must be usable wherever its base type is expected, without breaking callers. Penguin breaks the Bird contract. Fix: model the hierarchy around capabilities -- FlyingBird(Bird) has fly(), Penguin(Bird) does not inherit fly() at all. LSP violations often appear when inheritance is used for code reuse rather than true is-a relationships. Classic example from Barbara Liskov's 1987 paper."
+    difficulty: mid
+  - q: What principle is violated and what is the correct fix?
+    code: |-
+      from abc import ABC, abstractmethod
+
+      class Vehicle(ABC):
+          @abstractmethod
+          def start_engine(self): ...
+          @abstractmethod
+          def refuel(self): ...
+          @abstractmethod
+          def charge_battery(self): ...
+
+      class GasCar(Vehicle):
+          def start_engine(self): print("vroom")
+          def refuel(self): print("filling tank")
+          def charge_battery(self): raise NotImplementedError
+
+      class ElectricCar(Vehicle):
+          def start_engine(self): print("silent start")
+          def refuel(self): raise NotImplementedError
+          def charge_battery(self): print("charging")
+    options:
+      - text: ISP -- split Vehicle into Startable, Refuelable, Chargeable; classes implement only the interfaces they support
+        correct: true
+      - text: LSP -- GasCar and ElectricCar are not substitutable for Vehicle
+        correct: false
+      - text: OCP -- adding HybridCar requires modifying Vehicle
+        correct: false
+      - text: SRP -- Vehicle has too many responsibilities
+        correct: false
+    explanation: "Interface Segregation Principle: clients should not depend on methods they don't use. Vehicle forces all subclasses to implement all energy methods. Fix: class Startable(ABC): start_engine() / class Refuelable(ABC): refuel() / class Chargeable(ABC): charge_battery(). GasCar(Startable, Refuelable), ElectricCar(Startable, Chargeable). HybridCar(Startable, Refuelable, Chargeable). No class carries NotImplementedError dead weight."
+    difficulty: senior
+  - q: What principle is violated? What is the fix?
+    code: |-
+      class UserRepository:
+          def __init__(self):
+              self._db = PostgreSQLDatabase(host="prod-db", port=5432)
+
+          def find_by_id(self, user_id: int) -> dict:
+              return self._db.query(
+                  f"SELECT * FROM users WHERE id = {user_id}"
+              )
+    options:
+      - text: DIP -- UserRepository is hard-wired to PostgreSQL; inject a database abstraction so any compatible DB or mock can substitute
+        correct: true
+      - text: SRP -- the repository both queries and manages the connection
+        correct: false
+      - text: LSP -- PostgreSQLDatabase cannot be substituted
+        correct: false
+      - text: OCP -- adding a new query requires modifying UserRepository
+        correct: false
+    explanation: "Dependency Inversion Principle: high-level modules should not depend on low-level modules; both should depend on abstractions. Fix: define class Database(ABC): def query(self, sql: str) -> list ... then UserRepository(db: Database). PostgreSQLDatabase and MockDatabase both implement Database. UserRepository becomes independently testable -- pass MockDatabase in tests, PostgreSQLDatabase in production. Also makes switching databases a one-line change."
+    difficulty: junior
+  - q: What is the key production benefit of the refactor?
+    code: |-
+      # Before
+      class ReportService:
+          def generate(self, data): ...      # builds report structure
+          def export_pdf(self, report): ...  # renders to PDF
+          def export_csv(self, report): ...  # renders to CSV
+          def email_report(self, pdf, to): ...  # sends email
+          def archive(self, pdf, path): ...  # writes to disk
+
+      # After
+      class ReportBuilder:
+          def generate(self, data): ...
+
+      class PDFExporter:
+          def export(self, report): ...
+
+      class CSVExporter:
+          def export(self, report): ...
+
+      class ReportMailer:
+          def send(self, pdf, to): ...
+
+      class ReportArchiver:
+          def archive(self, pdf, path): ...
+    options:
+      - text: Each class can be changed, tested, and deployed independently -- a bug in PDFExporter cannot break email delivery or CSV export
+        correct: true
+      - text: Fewer total lines of code
+        correct: false
+      - text: Python requires one class per file
+        correct: false
+      - text: It prevents OCP violations by removing the original class
+        correct: false
+    explanation: "SRP applied. ReportService was a change magnet: adding a new export format, changing the email provider, and fixing an archive bug all required touching the same class. After: each class has one reason to change. Test PDFExporter independently with a mock report. Swap ReportMailer with SESMailer without touching CSVExporter. Deploy PDFExporter fix without risk to email or archive logic. This is SRP's production payoff: isolated blast radius."
+    difficulty: mid
+  - q: What principle does this enable and what is the concrete testing benefit?
+    code: |-
+      from abc import ABC, abstractmethod
+
+      class NotificationSender(ABC):
+          @abstractmethod
+          def send(self, to: str, message: str) -> None: ...
+
+      class OrderService:
+          def __init__(self, sender: NotificationSender):
+              self._sender = sender
+
+          def place_order(self, order):
+              # ... process order ...
+              self._sender.send(order.email, f"Order {order.id} confirmed")
+
+      class EmailSender(NotificationSender):
+          def send(self, to, message): ...  # real SMTP
+
+      class MockSender(NotificationSender):
+          def __init__(self): self.sent = []
+          def send(self, to, message): self.sent.append((to, message))
+    options:
+      - text: DIP -- OrderService depends on the abstraction; tests inject MockSender to assert behavior without sending real emails
+        correct: true
+      - text: SRP -- OrderService has one job
+        correct: false
+      - text: ISP -- NotificationSender has a single method
+        correct: false
+      - text: OCP -- OrderService cannot be modified
+        correct: false
+    explanation: "Dependency Inversion Principle. The high-level policy (OrderService) depends on the abstraction (NotificationSender), not on EmailSender directly. In tests: sender = MockSender(); service = OrderService(sender); service.place_order(order); assert sender.sent == [(order.email, ...)]. No SMTP connection, no external side effects. In production: inject EmailSender. Swapping to SMSSender or SlackSender requires zero changes to OrderService. Foundation of every testable architecture."
+    difficulty: senior
+  - q: How does this compare to an if/elif chain and what principle does it embody?
+    code: |-
+      DISCOUNT_RULES = {
+          "premium":  lambda total: total * 0.20,
+          "bulk":     lambda total: total * 0.10,
+          "employee": lambda total: total * 0.30,
       }
-      // Three different product teams each own one of these concerns.
-      // What is the architectural problem?
+
+      def apply_discount(order_type: str, total: float) -> float:
+          rule = DISCOUNT_RULES.get(order_type)
+          return rule(total) if rule else 0.0
+
+      # Adding a "vip" discount:
+      DISCOUNT_RULES["vip"] = lambda total: total * 0.25
     options:
-      - text: "Too many useEffect calls -- maximum is 2"
-        correct: false
-      - text: "It owns three unrelated concerns making it a change magnet -- any team touching any concern must edit this file"
+      - text: OCP -- a new discount type adds one dict entry; apply_discount never changes and existing rules cannot be accidentally broken
         correct: true
-      - text: "useState cannot be called three times in one component"
+      - text: DRY -- avoids repeating the lambda pattern
         correct: false
-      - text: "No problem -- this is standard React"
+      - text: Strategy -- each lambda is a strategy passed to apply_discount
         correct: false
-    explanation: "SRP violation that only shows at scale. User auth, post feed, and theme are three independent domains. Any of the three product teams touching this file creates merge conflicts and regression risk. Fix: extract useUser(), usePosts(), useTheme() hooks. Dashboard becomes a thin compositor. Test: how many teams edit this file? More than one = SRP violation."
-    difficulty: "junior"
-    isCode: true
-
-  - q: |
-      function Notification({ type, message }) {
-        let icon, color;
-        if (type === "success") { icon = "check"; color = "green"; }
-        else if (type === "error") { icon = "x"; color = "red"; }
-        else if (type === "warning") { icon = "alert"; color = "yellow"; }
-        return <div style={{color}}><Icon name={icon}/>{message}</div>;
-      }
-      // A "info" type is needed. A "critical" type might come later.
-      // What is the architectural risk?
-    options:
-      - text: "No risk -- adding an else if is trivial"
+      - text: No difference -- dict lookup and elif are equivalent
         correct: false
-      - text: "Every new type requires modifying the conditional chain, risking regressions on existing types and blocking parallel feature work"
-        correct: true
-      - text: "The component should be split into Success, Error, Warning sub-components"
-        correct: false
-      - text: "color should come from CSS classes not inline style"
-        correct: false
-    explanation: "OCP: open for extension, closed for modification. Every new type touches the same chain. Fix: const CONFIG = { success: {icon:'check',color:'green'}, ... }. Adding 'info' means one new key -- zero conditional changes. Scales to 20 types with no branching growth and no risk of touching existing paths."
-    difficulty: "mid"
-    isCode: true
-
-  - q: |
-      // Option A: One hook does everything
-      function useForm(config) {
-        // validation + submission + dirty tracking + field state
-      }
-
-      // Option B: Focused hooks
-      const useFormField = (name) => { /* value, onChange, error for one field */ };
-      const useFormSubmit = (onSubmit) => { /* submission only */ };
-      const useFormDirty = () => { /* dirty tracking only */ };
-
-      // A component only needs field validation, nothing else.
-      // Which approach is better and why?
-    options:
-      - text: "Option A -- one hook is simpler to import"
-        correct: false
-      - text: "Option B -- the component only depends on the interface it needs, not a fat hook forcing unused submission and dirty tracking"
-        correct: true
-      - text: "They are identical -- hooks do not have the coupling problem of classes"
-        correct: false
-      - text: "Option A is better for testing"
-        correct: false
-    explanation: "ISP: do not force clients to depend on interfaces they do not use. A single useForm() couples components needing field validation to submission logic. Splitting into focused hooks means a field component only imports what it needs. React Query, React Hook Form, and Zustand all follow this -- expose granular hooks so you only subscribe to the slice you consume."
-    difficulty: "senior"
-    isCode: true
-
-  - q: |
-      function Modal({ onClose }) {
-        return (
-          <div>
-            <button onClick={() => {
-              analytics.track('modal_closed');
-              onClose();
-            }}>X</button>
-          </div>
-        );
-      }
-      // This Modal is reused in 20 places across the app.
-      // Some contexts should not track the event. What is the problem?
-    options:
-      - text: "No problem -- analytics tracking is always appropriate"
-        correct: false
-      - text: "Modal is coupled to analytics -- reusing it in no-tracking contexts fires the event anyway, and changing the tracking call touches all 20 usages"
-        correct: true
-      - text: "analytics.track should be in useEffect instead"
-        correct: false
-      - text: "The button needs an aria-label"
-        correct: false
-    explanation: "SRP: Modal should not know about analytics. It also violates DIP -- it depends on the concrete analytics service rather than the onClose abstraction. Fix: the caller passes onClose that tracks if needed. Modal stays pure. Reuse in no-tracking contexts costs nothing. Each callsite controls its own side effects."
-    difficulty: "principal"
-    isCode: true
-
-  - q: |
-      function DataTable({ fetchData }) {
-        const [rows, setRows] = useState([]);
-        useEffect(() => {
-          fetchData().then(setRows);
-        }, [fetchData]);
-        return <table>...</table>;
-      }
-
-      // Usage A: <DataTable fetchData={() => fetch('/api').then(r => r.json())} />
-      // Usage B: <DataTable fetchData={() => Promise.resolve(mockRows)} />
-      // Usage C: <DataTable fetchData={graphqlClient.getRows} />
-      // Which principle does this design demonstrate?
-    options:
-      - text: "SRP -- DataTable has one job"
-        correct: false
-      - text: "DIP -- DataTable depends on the fetchData abstraction not a concrete fetch call, making all three usages possible without modifying the component"
-        correct: true
-      - text: "OCP -- DataTable cannot be modified"
-        correct: false
-      - text: "ISP -- the props interface is minimal"
-        correct: false
-    explanation: "DIP: high-level component depends on an abstraction (fetchData: () => Promise<Row[]>), not on fetch() directly. REST, GraphQL, or mock all satisfy the contract. Also LSP: any function returning Promise<Row[]> substitutes fetchData. This is what makes DataTable testable -- pass () => Promise.resolve(mockData) in tests. Foundation of headless component design."
-    difficulty: "junior"
-    isCode: true
-
-  - q: |
-      function Button({
-        onClick, label, style, className,
-        isLoading, loadingText, disabled, disabledReason,
-        icon, iconPosition, tooltip, tooltipDelay,
-        analyticsEvent, analyticsPayload
-      }) { /* ... */ }
-      // What is the architectural consequence of this interface?
-    options:
-      - text: "No consequence -- more props means more flexibility"
-        correct: false
-      - text: "Every consumer must understand 14 props even using 2, any prop change breaks all consumers, and unrelated concerns are coupled into one component"
-        correct: true
-      - text: "TypeScript will reject this prop signature"
-        correct: false
-      - text: "The only fix is to use a class component"
-        correct: false
-    explanation: "ISP: a 40-prop (or 14-prop) component forces every consumer to understand the full interface even if they use 2 props. Tooltip should compose Tooltip around Button. Analytics belongs in onClick at the callsite. Loading state can be LoadingButton. Each concern extracted means the Button interface stays stable. This is how Radix UI, Headless UI, and React Aria are built: minimal props per primitive."
-    difficulty: "mid"
-    isCode: true
-
-  - q: |
-      function withSubscription(Component, selectData) {
-        return function(props) {
-          const store = useContext(StoreContext);
-          const data = selectData(store);
-          return <Component {...props} data={data} />;
-        };
-      }
-      const ConnectedList = withSubscription(List, store => store.items);
-      // What does the selectData argument demonstrate architecturally?
-    options:
-      - text: "SRP -- separates selection logic from rendering"
-        correct: false
-      - text: "DIP -- withSubscription depends on a selector abstraction not on store shape directly, making it reusable across any store and any slice"
-        correct: true
-      - text: "OCP -- the HOC cannot be modified"
-        correct: false
-      - text: "LSP -- List can be replaced by any component"
-        correct: false
-    explanation: "DIP: withSubscription does not know store.items exists -- it delegates that knowledge to the caller via selectData. This is exactly how react-redux's connect(mapStateToProps) works. The HOC is reusable across any store shape. selectData functions are pure and independently testable. Three layers of dependency inversion in one pattern."
-    difficulty: "senior"
-    isCode: true
-
-  - q: |
-      function Tabs({ items }) {
-        const [active, setActive] = useState(0);
-        return (
-          <div>
-            {items.map((item, i) => (
-              <button key={i} onClick={() => setActive(i)}>
-                {item.label}
-              </button>
-            ))}
-            <div>{items[active].content}</div>
-          </div>
-        );
-      }
-      // Teams want: keyboard nav, URL sync, animated transitions.
-      // What is the correct architectural direction?
-    options:
-      - text: "Add isKeyboard, syncUrl, and animate props to Tabs"
-        correct: false
-      - text: "Expose a useTabs() headless hook or compound component pattern -- Tabs provides state, callers compose the behavior they need"
-        correct: true
-      - text: "Create TabsWithKeyboard, TabsWithUrl, TabsWithAnimation variants"
-        correct: false
-      - text: "Use an existing tabs library that covers all cases"
-        correct: false
-    explanation: "OCP + ISP: adding three props pushes toward the 14-prop antipattern. Compound components (TabList, Tab, TabPanel sharing context) let callers compose exactly what they need. Or useTabs() exposes {activeIndex, onSelect, getTabProps} and callers render whatever DOM they want. Radix UI Tabs, Headless UI Tabs, and React Aria all use this model -- zero built-in styling, full behavior, infinite composability."
-    difficulty: "principal"
-    isCode: true
+    explanation: "Open/Closed Principle. The if/elif version requires modifying apply_discount for each new type -- risky when other discount types exist in the same function. The dict version is closed to modification: apply_discount has never changed after three new types were added. DISCOUNT_RULES is open to extension: new entries slot in without touching existing rules. This is the registration pattern -- the same technique used by Python's codecs, Django's URL router, and Flask's blueprint system."
+    difficulty: principal
 ---
 
-# SOLID Principles in React
+# SOLID Principles
 
-Questions on applying SOLID principles to real React component architecture decisions.
+Language-agnostic questions on SRP, OCP, LSP, ISP, and DIP using Python examples.
