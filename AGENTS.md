@@ -24,7 +24,11 @@ src/
 ├── content.config.ts           # Zod schema + glob loader
 ├── content/
 │   ├── categories.ts           # Domain and topic definitions
-│   └── questions/              # One .md file per topic
+│   └── questions/              # One .md file per topic per difficulty
+│       ├── junior/
+│       ├── mid/
+│       ├── senior/
+│       └── principal/
 ├── components/
 │   ├── HomePage.tsx
 │   ├── QuizPage.tsx
@@ -63,11 +67,11 @@ npm run preview   # preview production build
 ## Adding a Topic
 
 1. Add entry to `TOPIC_OPTIONS` in `src/content/categories.ts`.
-2. Create `src/content/questions/<topic>.md` with matching `defaultTopics` + `defaultDomains`.
-3. No other changes — `getCollection('questions')` picks it up automatically.
+2. Create `src/content/questions/<difficulty>/<topic>.md` for each difficulty level, with matching `defaultTopics` + `defaultDomains`.
+3. No other changes — `getCollection('questions')` picks up all files via `**/*.md` automatically.
 
 ## Adding Questions
 
-Append to the `questions` array in the relevant `.md` file. `npm run build` fails with a clear error if schema is invalid.
+Append to the `questions` array in the relevant `<difficulty>/<topic>.md` file. All questions in a file must match its folder's difficulty level. `npm run build` fails with a clear error if schema is invalid.
 
 See [`specs/content-model.md`](specs/content-model.md) for question format, tagging rules, and language conventions.

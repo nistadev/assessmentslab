@@ -33,7 +33,9 @@ Defined in `src/content/categories.ts`.
 
 ## Question File Format
 
-Every file in `src/content/questions/` uses YAML frontmatter:
+Questions are split into one file per topic per difficulty, organised under `src/content/questions/<difficulty>/<topic>.md`. For example: `junior/react.md`, `senior/nodejs.md`. A difficulty folder is omitted for a given topic if no questions exist at that level.
+
+Every file uses YAML frontmatter:
 
 ```yaml
 ---
@@ -55,7 +57,7 @@ questions:
       - text: "Option D"
         correct: false
     explanation: "Why correct is correct. Why wrong options are wrong. Production context."
-    difficulty: "junior"          # junior | mid | senior | principal
+    difficulty: "junior"          # must match the file's parent folder name
 ---
 ```
 
@@ -75,6 +77,7 @@ questions:
 
 ## Tagging Rules
 
+- Every question in a file must have a `difficulty` matching the file's parent folder.
 - `defaultDomains` / `defaultTopics` must accurately reflect the file's content.
 - Use per-question overrides only when a question doesn't match file defaults.
 - Domain tags are exclusive — `domains: ["frontend"]` won't appear in a `computer-science` quiz.
