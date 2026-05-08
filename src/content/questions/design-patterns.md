@@ -52,11 +52,11 @@ questions:
     options:
       - text: Strategy -- a new export format adds one callable, DataExporter stays unchanged
         correct: true
-      - text: Template Method -- DataExporter must be subclassed for each format
+      - text: Template Method -- DataExporter defines the skeleton; subclasses override the format step
         correct: false
       - text: Decorator -- each formatter wraps the previous one
         correct: false
-      - text: Factory -- DataExporter creates the right formatter internally
+      - text: Dependency Injection -- DataExporter receives its collaborator at construction time
         correct: false
     explanation: "Strategy pattern: the algorithm (formatting) is extracted into an interchangeable object (callable). DataExporter is the context; it delegates the format decision to the injected strategy. Adding XML support means passing to_xml -- no subclass, no conditional. Python functions as first-class objects make this trivial. Used in Python's sort(key=...) and many ORMs."
     difficulty: junior
@@ -174,18 +174,18 @@ questions:
     difficulty: senior
   - q: What pattern? Why does new code call processor.charge() instead of gateway.charge_card()?
     code: |-
-      class LegacyPaymentGateway:
+      class ThirdPartyGateway:
           def charge_card(self, card_number: str, amount_cents: int) -> bool:
               ...
 
-      class PaymentAdapter:
-          def __init__(self, gateway: LegacyPaymentGateway):
+      class PaymentBridge:
+          def __init__(self, gateway: ThirdPartyGateway):
               self._gw = gateway
 
           def charge(self, card: str, amount_usd: float) -> bool:
               return self._gw.charge_card(card, int(amount_usd * 100))
 
-      processor = PaymentAdapter(LegacyPaymentGateway())
+      processor = PaymentBridge(ThirdPartyGateway())
       result = processor.charge("4111...", 9.99)
     options:
       - text: Adapter -- translates the new interface (charge with dollars) to the legacy interface (charge_card with cents) so new code never depends on legacy field signatures
@@ -196,7 +196,7 @@ questions:
         correct: false
       - text: Decorator -- adds unit conversion on top of existing behavior
         correct: false
-    explanation: Adapter pattern. New code depends only on PaymentAdapter's interface. When the legacy gateway is replaced with a modern API, only the adapter changes -- callers are untouched. Different from Facade (which simplifies multiple subsystems) and Decorator (which adds behavior to the same interface). Used whenever integrating third-party libraries, legacy systems, or external APIs whose interfaces you do not control.
+    explanation: Adapter pattern. New code depends only on PaymentBridge's interface. When the legacy gateway is replaced with a modern API, only the bridge changes -- callers are untouched. Different from Facade (which simplifies multiple subsystems) and Decorator (which adds behavior to the same interface). Used whenever integrating third-party libraries, legacy systems, or external APIs whose interfaces you do not control.
     difficulty: mid
   - q: What pattern? What does a subclass that only overrides render() guarantee?
     code: |-

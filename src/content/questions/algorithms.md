@@ -24,7 +24,7 @@ questions:
         correct: false
       - text: Postorder without null markers
         correct: false
-      - text: Binary search
+      - text: Postorder serialize/deserialize
         correct: false
     explanation: Preorder writes the root before its children, so deserialization knows what node to create first and can recursively rebuild children. For a general binary tree, null markers are still needed to preserve exact shape.
     difficulty: senior
@@ -48,7 +48,7 @@ questions:
         correct: false
       - text: Postorder traversal
         correct: false
-      - text: Lowest common ancestor
+      - text: Preorder traversal
         correct: false
     explanation: Level order traversal uses BFS to process nodes by depth. It naturally gives grouped rows like level 0, level 1, and level 2, which maps directly to row-based UI rendering.
     difficulty: junior
@@ -60,7 +60,7 @@ questions:
         correct: false
       - text: Path sum
         correct: false
-      - text: Invert tree
+      - text: Preorder traversal with path tracking
         correct: false
     explanation: LCA finds the nearest node that contains both target nodes in its subtree. In a folder tree, that nearest common node is the closest shared parent folder.
     difficulty: principal
@@ -70,7 +70,7 @@ questions:
         correct: true
       - text: maxDepth
         correct: false
-      - text: isValidBST
+      - text: Path Sum II
         correct: false
       - text: Inorder traversal
         correct: false
@@ -80,7 +80,7 @@ questions:
     options:
       - text: maxDepth
         correct: true
-      - text: Two Sum
+      - text: hasPathSum
         correct: false
       - text: Invert tree
         correct: false
@@ -96,7 +96,7 @@ questions:
         correct: false
       - text: Lowest common ancestor
         correct: false
-      - text: Path Sum II
+      - text: Validate BST
         correct: false
     explanation: Invert tree recursively swaps left and right children at every node. Doing that for the whole slide hierarchy produces the mirrored layout.
     difficulty: junior
@@ -120,7 +120,7 @@ questions:
         correct: false
       - text: Inorder traversal
         correct: false
-      - text: Invert tree
+      - text: Level order traversal
         correct: false
     explanation: Postorder returns children before parent. If dependencies are children and the job is the parent, postorder gives dependency-first execution.
     difficulty: mid
@@ -156,7 +156,7 @@ questions:
         correct: false
       - text: Inorder traversal
         correct: false
-      - text: Lowest common ancestor
+      - text: Preorder traversal
         correct: false
     explanation: Level order traversal processes the root first, then every node one depth level lower, and so on. That exactly matches top-down priority auditing.
     difficulty: junior
@@ -180,7 +180,7 @@ questions:
         correct: false
       - text: Lowest common ancestor
         correct: false
-      - text: Two Sum
+      - text: isValidBST
         correct: false
     explanation: maxDepth returns the length of the longest root-to-leaf path. That is the longest possible chain through the session tree.
     difficulty: mid
@@ -240,7 +240,7 @@ questions:
         correct: false
       - text: Inorder traversal
         correct: false
-      - text: Path Sum II
+      - text: hasPathSum
         correct: false
     explanation: Level order traversal groups nodes by depth using a queue. That makes it fit threaded views where all replies at the same depth are rendered together.
     difficulty: junior
@@ -260,7 +260,7 @@ questions:
         correct: false
       - text: Postorder traversal
         correct: false
-      - text: Level order traversal
+      - text: Reverse inorder traversal
         correct: false
     explanation: The order is left subtree, current node, then right subtree. That is inorder traversal. On a BST, this returns values in sorted order.
     difficulty: junior
@@ -280,7 +280,7 @@ questions:
         correct: false
       - text: Postorder traversal
         correct: false
-      - text: Breadth-first search
+      - text: Reverse preorder traversal
         correct: false
     explanation: The current node is processed before both children. That root-left-right order is preorder traversal, commonly used when cloning or serializing a tree.
     difficulty: junior
@@ -300,21 +300,21 @@ questions:
         correct: false
       - text: Inorder traversal
         correct: false
-      - text: Binary search
+      - text: Level order traversal
         correct: false
     explanation: The node is processed after both children. That left-right-root order is postorder, useful for deleting trees or resolving dependencies before dependents.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function traverse(root) {
+      function collectAll(root) {
         if (!root) return [];
         const result = [];
-        const queue = [root];
-        while (queue.length) {
-          const node = queue.shift();
+        const pending = [root];
+        while (pending.length) {
+          const node = pending.shift();
           result.push(node.val);
-          if (node.left) queue.push(node.left);
-          if (node.right) queue.push(node.right);
+          if (node.left) pending.push(node.left);
+          if (node.right) pending.push(node.right);
         }
         return result;
       }
@@ -325,52 +325,52 @@ questions:
         correct: false
       - text: Postorder traversal
         correct: false
-      - text: Lowest common ancestor
+      - text: Inorder traversal
         correct: false
     explanation: A queue is used to process the current node, then enqueue its children. That FIFO behavior visits nodes breadth-first, one level at a time.
     difficulty: junior
   - q: Which algorithm is implemented?
     code: |-
-      function levels(root) {
+      function groupByRow(root) {
         if (!root) return [];
         const result = [];
-        const queue = [root];
-        while (queue.length) {
-          const size = queue.length;
-          const level = [];
+        const pending = [root];
+        while (pending.length) {
+          const size = pending.length;
+          const row = [];
           for (let i = 0; i < size; i++) {
-            const node = queue.shift();
-            level.push(node.val);
-            if (node.left) queue.push(node.left);
-            if (node.right) queue.push(node.right);
+            const node = pending.shift();
+            row.push(node.val);
+            if (node.left) pending.push(node.left);
+            if (node.right) pending.push(node.right);
           }
-          result.push(level);
+          result.push(row);
         }
         return result;
       }
     options:
       - text: Level order traversal grouped by depth
         correct: true
-      - text: Inorder traversal
+      - text: Level order traversal (BFS, flat list)
         correct: false
-      - text: Path Sum II
+      - text: Preorder traversal
         correct: false
-      - text: BST validation
+      - text: Postorder traversal
         correct: false
     explanation: The queue gives BFS, and the `size` snapshot separates the nodes already in the queue for this depth from children added for the next depth.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function depth(node) {
+      function longestPath(node) {
         if (!node) return 0;
-        return 1 + Math.max(depth(node.left), depth(node.right));
+        return 1 + Math.max(longestPath(node.left), longestPath(node.right));
       }
     options:
       - text: Maximum depth of a binary tree
         correct: true
       - text: Minimum depth of a binary tree
         correct: false
-      - text: Path Sum II
+      - text: Check if a binary tree is height-balanced
         correct: false
       - text: Invert tree
         correct: false
@@ -378,10 +378,10 @@ questions:
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function flip(node) {
+      function swapChildren(node) {
         if (!node) return null;
-        const left = flip(node.left);
-        const right = flip(node.right);
+        const left = swapChildren(node.left);
+        const right = swapChildren(node.right);
         node.left = right;
         node.right = left;
         return node;
@@ -393,24 +393,24 @@ questions:
         correct: false
       - text: Lowest common ancestor
         correct: false
-      - text: Preorder serialization
+      - text: Postorder tree clone
         correct: false
     explanation: The recursive calls process both subtrees, then assign the right result to `left` and the left result to `right`. That swaps children at every node, producing a mirror tree.
     difficulty: junior
   - q: Which algorithm is implemented?
     code: |-
-      function valid(node, min = -Infinity, max = Infinity) {
+      function withinBounds(node, min = -Infinity, max = Infinity) {
         if (!node) return true;
         if (node.val <= min || node.val >= max) return false;
-        return valid(node.left, min, node.val) &&
-          valid(node.right, node.val, max);
+        return withinBounds(node.left, min, node.val) &&
+          withinBounds(node.right, node.val, max);
       }
     options:
       - text: Validate Binary Search Tree
         correct: true
-      - text: Lowest common ancestor
+      - text: Check if a binary tree is height-balanced
         correct: false
-      - text: Two Sum
+      - text: Lowest common ancestor
         correct: false
       - text: Level order traversal
         correct: false
@@ -418,31 +418,31 @@ questions:
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function search(root, p, q) {
-        if (!root || root === p || root === q) return root;
-        const left = search(root.left, p, q);
-        const right = search(root.right, p, q);
+      function getSharedParent(root, docA, docB) {
+        if (!root || root === docA || root === docB) return root;
+        const left = getSharedParent(root.left, docA, docB);
+        const right = getSharedParent(root.right, docA, docB);
         if (left && right) return root;
         return left || right;
       }
     options:
       - text: Lowest common ancestor in a binary tree
         correct: true
-      - text: Maximum depth
+      - text: Postorder traversal with return value
         correct: false
       - text: Path Sum II
         correct: false
-      - text: Inorder traversal
+      - text: Preorder search with path tracking
         correct: false
     explanation: If one target is found in each subtree, the current root is the closest shared ancestor. Otherwise the function returns whichever side found a target.
     difficulty: principal
   - q: Which algorithm is implemented?
     code: |-
-      function exists(node, target) {
+      function canReach(node, budget) {
         if (!node) return false;
-        if (!node.left && !node.right) return node.val === target;
-        return exists(node.left, target - node.val) ||
-          exists(node.right, target - node.val);
+        if (!node.left && !node.right) return node.val === budget;
+        return canReach(node.left, budget - node.val) ||
+          canReach(node.right, budget - node.val);
       }
     options:
       - text: Path Sum
@@ -457,14 +457,14 @@ questions:
     difficulty: principal
   - q: Which algorithm is implemented?
     code: |-
-      function collect(node, target, path = [], result = []) {
+      function findRoutes(node, budget, path = [], result = []) {
         if (!node) return result;
         path.push(node.val);
-        if (!node.left && !node.right && node.val === target) {
+        if (!node.left && !node.right && node.val === budget) {
           result.push([...path]);
         }
-        collect(node.left, target - node.val, path, result);
-        collect(node.right, target - node.val, path, result);
+        findRoutes(node.left, budget - node.val, path, result);
+        findRoutes(node.right, budget - node.val, path, result);
         path.pop();
         return result;
       }
@@ -473,7 +473,7 @@ questions:
         correct: true
       - text: hasPathSum boolean check
         correct: false
-      - text: Level order traversal
+      - text: Inorder with path accumulation
         correct: false
       - text: Invert tree
         correct: false
@@ -481,72 +481,72 @@ questions:
     difficulty: principal
   - q: Which algorithm is implemented?
     code: |-
-      function serialize(node) {
+      function encode(node) {
         if (!node) return ['#'];
         return [
           String(node.val),
-          ...serialize(node.left),
-          ...serialize(node.right)
+          ...encode(node.left),
+          ...encode(node.right)
         ];
       }
     options:
       - text: Preorder serialization with null markers
         correct: true
+      - text: Postorder serialization with null markers
+        correct: false
       - text: Inorder traversal without null markers
         correct: false
       - text: Level order traversal
-        correct: false
-      - text: Postorder deletion
         correct: false
     explanation: The node value is emitted before left and right children, so this is preorder. The `#` null markers preserve tree shape for exact deserialization.
     difficulty: senior
   - q: Which algorithmic pattern is this?
     code: |-
-      function clone(node) {
+      function copyNode(node) {
         if (!node) return null;
-        const copy = new TreeNode(node.val);
-        copy.left = clone(node.left);
-        copy.right = clone(node.right);
-        return copy;
+        const duplicate = new TreeNode(node.val);
+        duplicate.left = copyNode(node.left);
+        duplicate.right = copyNode(node.right);
+        return duplicate;
       }
     options:
       - text: Preorder tree clone
         correct: true
-      - text: Postorder traversal
+      - text: Postorder tree clone
+        correct: false
+      - text: Inorder tree clone
         correct: false
       - text: BST range query
-        correct: false
-      - text: Topological sort
         correct: false
     explanation: The copy node is created before its children are cloned, then child copies attach to it. That is a preorder-style recursive clone.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function range(node, low, high, out = []) {
+      function queryAccess(node, minLevel, maxLevel, out = []) {
         if (!node) return out;
-        if (node.val > low) range(node.left, low, high, out);
-        if (node.val >= low && node.val <= high) out.push(node.val);
-        if (node.val < high) range(node.right, low, high, out);
+        if (node.val > minLevel) queryAccess(node.left, minLevel, maxLevel, out);
+        if (node.val >= minLevel && node.val <= maxLevel) out.push(node.val);
+        if (node.val < maxLevel) queryAccess(node.right, minLevel, maxLevel, out);
         return out;
       }
     options:
       - text: BST range query using inorder pruning
         correct: true
-      - text: Path Sum II
+      - text: Inorder traversal only (no pruning)
         correct: false
       - text: Level order traversal
         correct: false
-      - text: Invert tree
+      - text: BFS range scan
         correct: false
     explanation: The function uses BST ordering to skip impossible subtrees and visits values in inorder position. It collects only nodes inside the low-to-high range.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function twoSum(nums, target) {
+      function findPair(nums, target) {
         const seen = new Map();
         for (let i = 0; i < nums.length; i++) {
-          const need = target - nums[i];
-          if (seen.has(need)) return [seen.get(need), i];
+          const complement = target - nums[i];
+          if (seen.has(complement)) return [seen.get(complement), i];
           seen.set(nums[i], i);
         }
         return null;
@@ -554,7 +554,7 @@ questions:
     options:
       - text: Two Sum with a hash map
         correct: true
-      - text: Binary search
+      - text: Two Sum with sorting and two pointers
         correct: false
       - text: Sliding window
         correct: false
@@ -564,15 +564,15 @@ questions:
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function group(words) {
-        const buckets = new Map();
+      function clusterWords(words) {
+        const groups = new Map();
         for (const word of words) {
           const key = word.split('').sort().join('');
-          const list = buckets.get(key) ?? [];
+          const list = groups.get(key) ?? [];
           list.push(word);
-          buckets.set(key, list);
+          groups.set(key, list);
         }
-        return [...buckets.values()];
+        return [...groups.values()];
       }
     options:
       - text: Group Anagrams
@@ -581,13 +581,13 @@ questions:
         correct: false
       - text: Two Sum
         correct: false
-      - text: First unique character
+      - text: Frequency count per word
         correct: false
     explanation: Each word is converted to a sorted-letter signature. Anagrams share the same signature, so the map groups them into the same bucket.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function firstUnique(s) {
+      function firstSingleton(s) {
         const count = new Map();
         for (const ch of s) count.set(ch, (count.get(ch) ?? 0) + 1);
         for (let i = 0; i < s.length; i++) {
@@ -602,23 +602,23 @@ questions:
         correct: false
       - text: Two Sum
         correct: false
-      - text: Level order traversal
+      - text: Sliding window with a set
         correct: false
     explanation: The first pass builds character counts. The second pass preserves original string order and returns the first index whose count is exactly 1.
     difficulty: junior
   - q: Which algorithm is implemented?
     code: |-
-      function longest(s) {
-        const lastSeen = new Map();
+      function maxWindow(s) {
+        const lastIndex = new Map();
         let left = 0;
-        let best = 0;
+        let maxLen = 0;
         for (let right = 0; right < s.length; right++) {
-          const prev = lastSeen.get(s[right]);
+          const prev = lastIndex.get(s[right]);
           if (prev !== undefined && prev >= left) left = prev + 1;
-          lastSeen.set(s[right], right);
-          best = Math.max(best, right - left + 1);
+          lastIndex.set(s[right], right);
+          maxLen = Math.max(maxLen, right - left + 1);
         }
-        return best;
+        return maxLen;
       }
     options:
       - text: Longest substring without repeating characters
@@ -627,21 +627,21 @@ questions:
         correct: false
       - text: First unique character
         correct: false
-      - text: BST validation
+      - text: Two-pointer without a map
         correct: false
-    explanation: This is sliding window with a last-seen map. The left pointer jumps past duplicates inside the current window, while `best` tracks the longest valid window.
+    explanation: This is sliding window with a last-seen map. The left pointer jumps past duplicates inside the current window, while `maxLen` tracks the longest valid window.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function longestConsecutive(nums) {
-        const set = new Set(nums);
+      function maxStreak(nums) {
+        const lookup = new Set(nums);
         let best = 0;
-        for (const num of set) {
-          if (set.has(num - 1)) continue;
-          let current = num;
+        for (const num of lookup) {
+          if (lookup.has(num - 1)) continue;
+          let cursor = num;
           let length = 1;
-          while (set.has(current + 1)) {
-            current++;
+          while (lookup.has(cursor + 1)) {
+            cursor++;
             length++;
           }
           best = Math.max(best, length);
@@ -653,50 +653,50 @@ questions:
         correct: true
       - text: Two Sum
         correct: false
-      - text: Binary tree max depth
+      - text: Frequency count then scan
         correct: false
       - text: Group Anagrams
         correct: false
-    explanation: The set gives expected O(1) membership checks. The key clue is `if (set.has(num - 1)) continue`, which skips non-start nodes so each sequence is counted once.
+    explanation: The set gives expected O(1) membership checks. The key clue is `if (lookup.has(num - 1)) continue`, which skips non-start nodes so each sequence is counted once.
     difficulty: principal
   - q: Which algorithm is implemented?
     code: |-
-      function intersect(a, b) {
-        const seen = new Set(a);
-        const result = new Set();
+      function commonValues(a, b) {
+        const registry = new Set(a);
+        const common = new Set();
         for (const value of b) {
-          if (seen.has(value)) result.add(value);
+          if (registry.has(value)) common.add(value);
         }
-        return [...result];
+        return [...common];
       }
     options:
       - text: Hash set intersection
         correct: true
-      - text: Two Sum
+      - text: Two Sum complement lookup
         correct: false
-      - text: Path Sum
+      - text: Sorting both arrays and merging
         correct: false
-      - text: Preorder traversal
+      - text: Frequency count intersection
         correct: false
     explanation: The first set stores values from one array. The second loop checks membership and records shared values, which is the standard hash set intersection pattern.
     difficulty: junior
   - q: Which algorithm is implemented?
     code: |-
-      function isValid(s) {
+      function isClosed(s) {
         const stack = [];
-        const pairs = { ')': '(', ']': '[', '}': '{' };
+        const matching = { ')': '(', ']': '[', '}': '{' };
         for (const ch of s) {
           if (ch === '(' || ch === '[' || ch === '{') stack.push(ch);
-          else if (stack.pop() !== pairs[ch]) return false;
+          else if (stack.pop() !== matching[ch]) return false;
         }
         return stack.length === 0;
       }
     options:
       - text: Valid parentheses using a stack
         correct: true
-      - text: Queue-based BFS
+      - text: Balanced bracket counter using recursion
         correct: false
-      - text: Two Sum
+      - text: Stack-based reverse scan
         correct: false
       - text: Binary search
         correct: false
@@ -704,90 +704,90 @@ questions:
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function reverseList(head) {
-        let prev = null;
-        let current = head;
-        while (current) {
-          const next = current.next;
-          current.next = prev;
-          prev = current;
-          current = next;
+      function flipOrder(head) {
+        let behind = null;
+        let cursor = head;
+        while (cursor) {
+          const next = cursor.next;
+          cursor.next = behind;
+          behind = cursor;
+          cursor = next;
         }
-        return prev;
+        return behind;
       }
     options:
       - text: Reverse a singly linked list
         correct: true
-      - text: Detect a cycle
+      - text: Detect a cycle using two pointers
         correct: false
       - text: Merge two sorted lists
         correct: false
       - text: Remove nth node from end
         correct: false
-    explanation: The code walks the list once and flips each `next` pointer to the previous node. Returning `prev` gives the old tail as the new head.
+    explanation: The code walks the list once and flips each `next` pointer to the previous node. Returning `behind` gives the old tail as the new head.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function hasCycle(head) {
-        let slow = head;
-        let fast = head;
-        while (fast && fast.next) {
-          slow = slow.next;
-          fast = fast.next.next;
-          if (slow === fast) return true;
+      function isCircular(head) {
+        let a = head;
+        let b = head;
+        while (b && b.next) {
+          a = a.next;
+          b = b.next.next;
+          if (a === b) return true;
         }
         return false;
       }
     options:
       - text: Floyd's cycle detection
         correct: true
-      - text: Binary search
+      - text: Find middle of linked list using two pointers
         correct: false
-      - text: Merge sort
+      - text: Find intersection of two lists using length difference
         correct: false
-      - text: Union-find
+      - text: Remove nth node from end
         correct: false
     explanation: The fast pointer moves two steps while the slow pointer moves one. If there is a cycle, they eventually meet. This is Floyd's tortoise and hare algorithm.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function middleNode(head) {
-        let slow = head;
-        let fast = head;
-        while (fast && fast.next) {
-          slow = slow.next;
-          fast = fast.next.next;
+      function splitPoint(head) {
+        let a = head;
+        let b = head;
+        while (b && b.next) {
+          a = a.next;
+          b = b.next.next;
         }
-        return slow;
+        return a;
       }
     options:
       - text: Find middle node with slow and fast pointers
         correct: true
+      - text: Detect a cycle using two pointers
+        correct: false
+      - text: Find kth node from end using two pointers
+        correct: false
       - text: Reverse linked list
-        correct: false
-      - text: LRU cache eviction
-        correct: false
-      - text: Trie lookup
         correct: false
     explanation: Fast advances twice as quickly as slow. When fast reaches the end, slow is at the middle.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function merge(a, b) {
-        const dummy = { next: null };
-        let tail = dummy;
-        while (a && b) {
-          if (a.val <= b.val) {
-            tail.next = a;
-            a = a.next;
+      function joinSorted(listA, listB) {
+        const sentinel = { next: null };
+        let cursor = sentinel;
+        while (listA && listB) {
+          if (listA.val <= listB.val) {
+            cursor.next = listA;
+            listA = listA.next;
           } else {
-            tail.next = b;
-            b = b.next;
+            cursor.next = listB;
+            listB = listB.next;
           }
-          tail = tail.next;
+          cursor = cursor.next;
         }
-        tail.next = a || b;
-        return dummy.next;
+        cursor.next = listA || listB;
+        return sentinel.next;
       }
     options:
       - text: Merge two sorted linked lists
@@ -796,105 +796,105 @@ questions:
         correct: false
       - text: Detect a cycle
         correct: false
-      - text: Find intersection node
+      - text: Remove duplicates from sorted list
         correct: false
     explanation: The dummy head and tail pointer build a sorted chain by repeatedly taking the smaller current node from either list.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function search(nums, target) {
+      function locate(nums, target) {
         let left = 0;
         let right = nums.length - 1;
         while (left <= right) {
-          const mid = Math.floor((left + right) / 2);
-          if (nums[mid] === target) return mid;
-          if (nums[mid] < target) left = mid + 1;
-          else right = mid - 1;
+          const pivot = Math.floor((left + right) / 2);
+          if (nums[pivot] === target) return pivot;
+          if (nums[pivot] < target) left = pivot + 1;
+          else right = pivot - 1;
         }
         return -1;
       }
     options:
       - text: Binary search
         correct: true
+      - text: Jump search on sorted array
+        correct: false
+      - text: Interpolation search
+        correct: false
       - text: Linear search
-        correct: false
-      - text: Breadth-first search
-        correct: false
-      - text: Two pointers
         correct: false
     explanation: The code keeps left and right bounds and cuts the search space in half after each comparison. That is binary search on a sorted array.
     difficulty: junior
   - q: Which algorithm is implemented?
     code: |-
-      function bfs(graph, start) {
-        const seen = new Set([start]);
-        const queue = [start];
-        const order = [];
-        while (queue.length) {
-          const node = queue.shift();
-          order.push(node);
+      function spreadFrom(graph, start) {
+        const visited = new Set([start]);
+        const frontier = [start];
+        const result = [];
+        while (frontier.length) {
+          const node = frontier.shift();
+          result.push(node);
           for (const next of graph.get(node) ?? []) {
-            if (!seen.has(next)) {
-              seen.add(next);
-              queue.push(next);
+            if (!visited.has(next)) {
+              visited.add(next);
+              frontier.push(next);
             }
           }
         }
-        return order;
+        return result;
       }
     options:
       - text: Breadth-first search on a graph
         correct: true
+      - text: Iterative DFS using an explicit stack
+        correct: false
       - text: Depth-first search
         correct: false
-      - text: Binary search
-        correct: false
-      - text: Union-find
+      - text: Topological sort
         correct: false
     explanation: The queue processes nodes in FIFO order, and the seen set prevents revisiting. That is breadth-first search over an adjacency list.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function dfs(graph, start, seen = new Set(), order = []) {
-        if (seen.has(start)) return order;
-        seen.add(start);
-        order.push(start);
+      function deepScan(graph, start, visited = new Set(), result = []) {
+        if (visited.has(start)) return result;
+        visited.add(start);
+        result.push(start);
         for (const next of graph.get(start) ?? []) {
-          dfs(graph, next, seen, order);
+          deepScan(graph, next, visited, result);
         }
-        return order;
+        return result;
       }
     options:
       - text: Depth-first search on a graph
         correct: true
       - text: Breadth-first search
         correct: false
-      - text: Two Sum
+      - text: Iterative BFS using a queue
         correct: false
-      - text: LRU cache
+      - text: Topological sort via DFS
         correct: false
     explanation: The recursive call explores each neighbor before returning to try the next neighbor. That deep recursive exploration identifies DFS.
     difficulty: mid
   - q: Which algorithm is implemented?
     code: |-
-      function isBalanced(root) {
-        function height(node) {
+      function checkStructure(root) {
+        function getSize(node) {
           if (!node) return 0;
-          const left = height(node.left);
+          const left = getSize(node.left);
           if (left === -1) return -1;
-          const right = height(node.right);
+          const right = getSize(node.right);
           if (right === -1) return -1;
           if (Math.abs(left - right) > 1) return -1;
           return 1 + Math.max(left, right);
         }
-        return height(root) !== -1;
+        return getSize(root) !== -1;
       }
     options:
       - text: Check if a binary tree is height-balanced
         correct: true
-      - text: Validate BST
+      - text: Validate BST using bounds
         correct: false
-      - text: Invert binary tree
+      - text: Count nodes in subtrees
         correct: false
       - text: Find lowest common ancestor
         correct: false
@@ -902,15 +902,15 @@ questions:
     difficulty: principal
   - q: Which algorithm is implemented?
     code: |-
-      function kthSmallest(root, k) {
-        const stack = [];
+      function nthSmallest(root, k) {
+        const trail = [];
         let node = root;
-        while (stack.length || node) {
+        while (trail.length || node) {
           while (node) {
-            stack.push(node);
+            trail.push(node);
             node = node.left;
           }
-          node = stack.pop();
+          node = trail.pop();
           if (--k === 0) return node.val;
           node = node.right;
         }
@@ -918,20 +918,20 @@ questions:
     options:
       - text: Find kth smallest value using iterative inorder traversal
         correct: true
-      - text: Find max depth
+      - text: Find kth smallest using a min heap
         correct: false
-      - text: Serialize a tree
+      - text: Find kth largest using a max heap
         correct: false
-      - text: Level order traversal
+      - text: Binary search on value range
         correct: false
     explanation: The stack walks to the leftmost node first, then visits nodes in inorder sorted order. Decrementing k on each visit returns the kth smallest BST value.
     difficulty: senior
   - q: Which algorithm is implemented?
     code: |-
-      function topKFrequent(nums, k) {
-        const count = new Map();
-        for (const num of nums) count.set(num, (count.get(num) ?? 0) + 1);
-        return [...count.entries()]
+      function topItems(nums, k) {
+        const freq = new Map();
+        for (const num of nums) freq.set(num, (freq.get(num) ?? 0) + 1);
+        return [...freq.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, k)
           .map(([num]) => num);
@@ -939,11 +939,11 @@ questions:
     options:
       - text: Top K frequent elements using a frequency map
         correct: true
+      - text: Top K with a min heap
+        correct: false
+      - text: Top K with bucket sort by frequency
+        correct: false
       - text: Binary search
-        correct: false
-      - text: Union-find
-        correct: false
-      - text: Graph DFS
         correct: false
     explanation: The map counts how often each value appears, then entries are sorted by count and the first k keys are returned. The core algorithmic pattern is frequency counting plus top-k selection.
     difficulty: mid
@@ -953,7 +953,7 @@ questions:
         correct: true
       - text: Nested loops over every pair
         correct: false
-      - text: Sort the array and return sorted positions
+      - text: Sort the array and use two pointers
         correct: false
       - text: Binary search without preprocessing
         correct: false
@@ -963,11 +963,11 @@ questions:
     options:
       - text: Group Anagrams using a signature map
         correct: true
-      - text: Binary search
+      - text: Two-pass frequency sort per word
         correct: false
       - text: Postorder traversal
         correct: false
-      - text: Union-find
+      - text: Hash map grouping by sorted characters
         correct: false
     explanation: Group Anagrams maps a canonical signature to an array of words. Sorting each word's letters makes anagrams share the same key, such as 'ate', 'eat', and 'tea' all mapping to 'aet'.
     difficulty: mid
@@ -999,9 +999,9 @@ questions:
     options:
       - text: Hash set intersection
         correct: true
-      - text: Postorder traversal
+      - text: Sorting both arrays then scanning
         correct: false
-      - text: A min heap only
+      - text: Two Sum complement lookup
         correct: false
       - text: String serialization
         correct: false

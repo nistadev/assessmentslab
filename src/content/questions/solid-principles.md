@@ -152,9 +152,9 @@ questions:
     options:
       - text: Each class can be changed, tested, and deployed independently -- a bug in PDFExporter cannot break email delivery or CSV export
         correct: true
-      - text: Fewer total lines of code
+      - text: Adding a new export format no longer requires modifying existing exporters (OCP benefit)
         correct: false
-      - text: Python requires one class per file
+      - text: Each exporter now depends on an abstraction, enabling dependency injection (DIP benefit)
         correct: false
       - text: It prevents OCP violations by removing the original class
         correct: false
@@ -210,11 +210,11 @@ questions:
     options:
       - text: OCP -- a new discount type adds one dict entry; apply_discount never changes and existing rules cannot be accidentally broken
         correct: true
-      - text: DRY -- avoids repeating the lambda pattern
+      - text: SRP -- each lambda now has exactly one discount responsibility
         correct: false
       - text: Strategy -- each lambda is a strategy passed to apply_discount
         correct: false
-      - text: No difference -- dict lookup and elif are equivalent
+      - text: DIP -- apply_discount depends on an abstraction (callable) rather than concrete discount logic
         correct: false
     explanation: "Open/Closed Principle. The if/elif version requires modifying apply_discount for each new type -- risky when other discount types exist in the same function. The dict version is closed to modification: apply_discount has never changed after three new types were added. DISCOUNT_RULES is open to extension: new entries slot in without touching existing rules. This is the registration pattern -- the same technique used by Python's codecs, Django's URL router, and Flask's blueprint system."
     difficulty: principal
