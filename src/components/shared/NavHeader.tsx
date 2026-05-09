@@ -29,7 +29,7 @@ export function NavHeader({
       </div>
 
       <div className="justify-self-center">
-        <span className="brand-chip">AssesLab</span>
+        <span className="brand-chip">assessmentslab</span>
       </div>
 
       <div className="justify-self-end">

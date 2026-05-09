@@ -9,7 +9,7 @@ import type {
 } from './types';
 import { getTopicLabel } from '../../content/categories';
 
-const QUIZ_STORAGE_PREFIX = 'asseslab.quiz.';
+const QUIZ_STORAGE_PREFIX = 'assessmentslab.quiz.';
 
 interface StoredQuizRecord {
   questionIds?: string[];

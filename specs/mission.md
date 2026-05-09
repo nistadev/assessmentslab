@@ -25,7 +25,7 @@ No free platform covers assessment-style practice at this breadth. Alternatives 
 
 ## Why Existing Alternatives Fall Short
 
-| Problem | Alternatives | AssesLab |
+| Problem | Alternatives | assessmentslab |
 |---|---|---|
 | Cost | Paid tiers, freemium limits | Free, always |
 | Extensibility | Closed content | Open, PR-based contributions |

@@ -1,4 +1,4 @@
-# AssesLab
+# AssessmentsLab
 
 Self-paced quiz app for practising software engineering assessments. Questions authored in Markdown, validated at build time, no backend required.
 

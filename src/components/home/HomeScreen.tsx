@@ -200,7 +200,7 @@ export function HomeScreen({
                 Stress-test your engineering instincts.
               </h1>
               <p className="text-base-content/70 mt-2 max-w-xl">
-                AssesLab drills interview-grade questions across development
+                assessmentslab drills interview-grade questions across development
                 disciplines with shuffled runs, timed rounds, and tight feedback
                 loops.
               </p>
