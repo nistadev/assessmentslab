@@ -58,11 +58,11 @@ lessons:
   difficulty: mid
 - title: Use deque when both ends of a sequence need cheap access
   explanation: |
-    A plain list is a poor double-ended queue. Popping from the left costs O(n) because every element shifts. A deque (double-ended queue) supports O(1) append and pop from both ends.
+    A plain list is a poor double-ended queue. Popping from the left costs O(n) because every element shifts. A deque (double-ended queue) supports O(1) append and pop from both ends, and O(1) len.
 
-    This matters in sliding-window problems, breadth-first search frontiers, and rate limiters that drain from the front while appending to the back. Using a list in these cases is a hidden performance bug that only shows at scale.
+    This matters in sliding-window problems, breadth-first search frontiers, and rate limiters that drain from the front while appending to the back. Using a list in these cases is a hidden performance bug that only shows at scale: at 10,000 items, each list.pop(0) shifts 10,000 elements.
 
-    Do not confuse deque with a priority queue. A deque preserves insertion order. A priority queue always removes the highest-priority item regardless of insertion order.
+    Do not confuse deque with a priority queue. A deque is O(1) at both ends but does not sort. A priority queue is O(log n) insert and O(log n) remove, always yielding the highest-priority item next.
   examples:
   - label: Sliding window with deque
     description: Track the last N timestamps efficiently without shifting a list.
@@ -94,7 +94,7 @@ lessons:
   explanation: |
     Any algorithm that asks "is this item in a collection?" inside a loop over another collection is a candidate for a set replacement.
 
-    O(n²) nested loops are common when the inner list is used only for membership tests. Converting the inner collection to a set reduces the lookup to O(1) and the whole operation to O(n). The tradeoff is memory: the set must fit in RAM, and items must be hashable.
+    Scanning a list for membership is O(n). Doing that inside a loop over n items gives O(n²) total. Converting the inner collection to a set reduces each lookup to O(1), making the whole operation O(n) — a meaningful improvement when n is large. Building the set itself costs O(m) where m is its size, paid once upfront.
 
     Do not blindly convert everything to sets. Sets discard duplicates and ordering. If you need either, a set is wrong.
   examples:

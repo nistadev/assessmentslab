@@ -10,6 +10,8 @@ lessons:
 
     Arrays preserve order and support indexed traversal. Sets answer membership questions without scanning every item. Maps associate one key with one value. Most data-structure choices start by asking which operation must stay cheap: append, lookup by position, membership check, or lookup by key.
 
+    Big-O notation describes how an operation's cost grows with the size of the collection. O(1) means the cost is constant regardless of size. O(n) means the cost grows linearly — double the items, double the work. Membership check on a list is O(n) because every item may be scanned. Membership check on a set is O(1) because a hash table is used internally.
+
     In everyday engineering these three types — sequence, set, map — cover the vast majority of real code. Reach for more complex structures only when a clear access pattern demands it.
   examples:
   - label: Linear membership scan
@@ -42,7 +44,7 @@ lessons:
 
     A stack is last-in, first-out. It matches undo history, nested parsing, and depth-first traversal. A queue is first-in, first-out. It matches background jobs, breadth-first traversal, and fair request handling. The data structure makes the processing policy explicit.
 
-    Both are usually built on top of arrays or linked lists. Choosing the right wrapper communicates intent to the next reader even if the performance difference is small.
+    Both are usually built on top of arrays or linked lists. Push and pop on a stack are O(1). Enqueue and dequeue on a queue are O(1) when backed by a deque. Choosing the right wrapper communicates intent to the next reader even if the performance difference is small.
   examples:
   - label: Stack for undo
     description: Last action should be undone first.
@@ -68,7 +70,7 @@ lessons:
   explanation: |
     A list (dynamic array) is the default sequence type in most languages. It grows as you append items and allows access by position.
 
-    Under the hood, a list is backed by an array that is occasionally copied to a larger buffer when capacity runs out. This keeps appends fast on average. Random access by index is always fast. Inserting or removing in the middle is slow because every item after the insertion point must shift.
+    Under the hood, a list is backed by an array that is occasionally copied to a larger buffer when capacity runs out. This keeps appends O(1) amortized — fast on average, with rare O(n) copy events. Random access by index is O(1). Inserting or removing in the middle is O(n) because every item after the insertion point must shift.
 
     Common beginner confusion: using a list when a set or map would answer the question faster, or removing items from the middle of a list inside a loop.
   examples:
@@ -89,11 +91,11 @@ lessons:
   difficulty: junior
 - title: Hash maps give fast lookup by key
   explanation: |
-    A hash map (dictionary) turns any hashable key into an index so that lookup, insert, and delete all run in constant time on average.
+    A hash map (dictionary) turns any hashable key into an index so that lookup, insert, and delete all run in O(1) on average. Worst-case is O(n) when many keys collide, but with a good hash function this is rare in practice.
 
     Hash maps are one of the most commonly used structures in everyday engineering. Configuration objects, caches, frequency counts, and grouping by attribute are all natural fits.
 
-    Do not confuse with a list of tuples or a sorted structure. A map gives you fast access by key, not by position or sorted order.
+    Do not confuse with a list of tuples or a sorted structure. A map gives you O(1) access by key, not by position or sorted order.
   examples:
   - label: Frequency count
     description: Count how often each word appears without scanning twice.
