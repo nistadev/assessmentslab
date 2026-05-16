@@ -51,9 +51,9 @@ export default function HomePage({
       totalQ={questions.length}
       questions={questions}
       studyLessons={studyLessons}
-      onStartQuiz={(selectedDomains, selectedTopics, timerMinutes, maxQuestions, feedbackMode, difficulties) => {
+      onStartQuiz={(selectedDomains, selectedTopics, timerMinutes, maxQuestions, feedbackMode, difficulties, correctWeight) => {
         const search = buildQuizSearchParams(
-          { domains: selectedDomains, topics: selectedTopics, difficulties, timerMinutes, maxQuestions, feedbackMode },
+          { domains: selectedDomains, topics: selectedTopics, difficulties, timerMinutes, maxQuestions, feedbackMode, correctWeight },
           generateQuizUid(),
         );
         window.location.assign(`/quiz?${search.toString()}`);

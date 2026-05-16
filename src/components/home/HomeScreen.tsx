@@ -138,6 +138,7 @@ export function HomeScreen({
     maxQuestions: number,
     feedbackMode: FeedbackMode,
     difficulties: QuestionDifficulty[],
+    correctWeight: number,
   ) => void;
   onStartStudy: (
     selectedDomains: string[],
@@ -169,6 +170,9 @@ export function HomeScreen({
   );
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(
     initialConfig?.feedbackMode ?? "end",
+  );
+  const [correctWeight, setCorrectWeight] = useState(
+    initialConfig?.correctWeight ?? 90,
   );
 
   const [studySelectedDomains, setStudySelectedDomains] = useState<string[]>(
@@ -240,6 +244,7 @@ export function HomeScreen({
     setTimerMinutes(initialConfig.timerMinutes);
     setMaxQuestions(initialConfig.maxQuestions);
     setFeedbackMode(initialConfig.feedbackMode);
+    setCorrectWeight(initialConfig.correctWeight ?? 90);
   }, [initialConfig]);
 
   useEffect(() => {
@@ -338,6 +343,7 @@ export function HomeScreen({
       maxQuestions,
       feedbackMode,
       difficulties,
+      correctWeight,
     );
   };
   const modeButtonClass = (targetMode: AppMode) => {
@@ -675,6 +681,32 @@ export function HomeScreen({
                 </div>
               )}
 
+              {!isStudyMode && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">
+                      Score Weights
+                    </p>
+                    <span className="text-xs text-base-content/50">
+                      Answers {correctWeight}% · Time {100 - correctWeight}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="range range-primary range-sm w-full"
+                    value={correctWeight}
+                    onChange={(e) => setCorrectWeight(Number(e.target.value))}
+                  />
+                  <div className="flex justify-between text-[11px] text-base-content/40 mt-1">
+                    <span>Time only</span>
+                    <span>Answers only</span>
+                  </div>
+                </div>
+              )}
+
               {isStudyMode && (
                 <div className="rounded-xl border border-info/20 bg-info/8 px-4 py-3 text-sm text-base-content/70">
                   {availableCount} matching lessons. Lessons keep authored order
@@ -709,21 +741,12 @@ export function HomeScreen({
                   const resultUrl = `/results?${params.toString()}`;
                   const targetUrl = entry.result ? resultUrl : quizUrl;
                   const performancePct = entry.result
-                    ? Math.round(
-                        (
-                          (entry.result.score /
-                            Math.max(entry.result.answers.length, 1)) *
-                            0.9 +
-                          Math.max(
-                            0,
-                            (entry.result.totalSeconds -
-                              entry.result.elapsedSeconds) /
-                              Math.max(entry.result.totalSeconds, 1),
-                          ) *
-                            0.1
-                        ) *
-                          100,
-                      )
+                    ? (() => {
+                        const w = (entry.config.correctWeight ?? 90) / 100;
+                        const acc = entry.result.score / Math.max(entry.result.answers.length, 1);
+                        const spd = Math.max(0, (entry.result.totalSeconds - entry.result.elapsedSeconds) / Math.max(entry.result.totalSeconds, 1));
+                        return Math.round((acc * w + spd * (1 - w)) * 100);
+                      })()
                     : null;
                   const minutes = entry.result
                     ? Math.floor(entry.result.elapsedSeconds / 60)

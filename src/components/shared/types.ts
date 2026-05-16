@@ -77,6 +77,7 @@ export interface QuizConfig {
   timerMinutes: number;
   maxQuestions: number;
   feedbackMode: FeedbackMode;
+  correctWeight: number;
 }
 
 export interface StudyExample {

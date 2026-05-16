@@ -7,6 +7,7 @@ export function ResultScreen({
   answers,
   elapsedSeconds,
   totalSeconds,
+  correctWeight = 90,
   onRestart,
   onStartNew,
   onBackHome,
@@ -17,6 +18,7 @@ export function ResultScreen({
   answers: Answer[];
   elapsedSeconds: number;
   totalSeconds: number;
+  correctWeight?: number;
   onRestart: () => void;
   onStartNew: () => void;
   onBackHome: () => void;
@@ -26,7 +28,8 @@ export function ResultScreen({
   const total = answers.length;
   const accuracyRatio = total > 0 ? score / total : 0;
   const speedRatio = totalSeconds > 0 ? Math.max(0, (totalSeconds - elapsedSeconds) / totalSeconds) : 0;
-  const performanceRatio = (accuracyRatio * 0.9) + (speedRatio * 0.1);
+  const w = correctWeight / 100;
+  const performanceRatio = (accuracyRatio * w) + (speedRatio * (1 - w));
   const performancePct = Math.round(performanceRatio * 100);
   const needsMorePractice = performanceRatio <= 0.65;
   const verdict = performanceRatio >= 0.85 ? '🔥 Ready to go!' : performanceRatio >= 0.65 ? '⚡ Almost there.' : 'Need to practise more';

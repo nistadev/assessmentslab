@@ -136,6 +136,10 @@ export function parseQuizSearchParams(
   const timer = Number(rawConfig.timerMinutes);
   const maxQuestions = Number(rawConfig.maxQuestions);
   const mode = rawConfig.feedbackMode;
+  const rawCorrectWeight = Number(rawConfig.correctWeight);
+  const correctWeight = Number.isFinite(rawCorrectWeight) && rawCorrectWeight >= 0 && rawCorrectWeight <= 100
+    ? Math.round(rawCorrectWeight)
+    : 90;
 
   const allowedDomains = new Set(availableDomains);
   const domains = rawDomains
@@ -173,6 +177,7 @@ export function parseQuizSearchParams(
       timerMinutes: Math.min(120, Math.floor(timer)),
       maxQuestions: Math.floor(maxQuestions),
       feedbackMode,
+      correctWeight,
     },
   };
 }
@@ -332,6 +337,11 @@ export function writeStoredQuizConfig(uid: string, config: QuizConfig) {
     startedAt: record.startedAt ?? now,
     lastUsedAt: now,
   });
+}
+
+export function readStoredQuizConfig(uid: string): QuizConfig | null {
+  const record = readStoredQuizRecord(uid);
+  return record?.config ?? null;
 }
 
 export function readStoredQuizResult(uid: string): StoredQuizResult | null {

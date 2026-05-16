@@ -155,6 +155,7 @@ export default function StudyPage({
       timerMinutes: 10,
       maxQuestions: 20,
       feedbackMode: 'end',
+      correctWeight: 100,
     };
     const search = buildQuizSearchParams(config, generateQuizUid());
 

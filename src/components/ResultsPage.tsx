@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavHeader } from './shared/NavHeader';
 import { ResultScreen } from './results/ResultScreen';
-import type { StoredQuizResult, Theme } from './shared/types';
-import { readStoredQuizResult } from './shared/utils';
+import type { QuizConfig, StoredQuizResult, Theme } from './shared/types';
+import { readStoredQuizConfig, readStoredQuizResult } from './shared/utils';
 
 export default function ResultsPage() {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -11,6 +11,7 @@ export default function ResultsPage() {
     return current === 'dark' ? 'dark' : 'light';
   });
   const [result, setResult] = useState<StoredQuizResult | null>(null);
+  const [config, setConfig] = useState<QuizConfig | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function ResultsPage() {
 
     const uid = new URLSearchParams(window.location.search).get('uid');
     setResult(uid ? readStoredQuizResult(uid) : null);
+    setConfig(uid ? readStoredQuizConfig(uid) : null);
     setLoaded(true);
   }, []);
 
@@ -66,6 +68,7 @@ export default function ResultsPage() {
       answers={result.answers}
       elapsedSeconds={result.elapsedSeconds}
       totalSeconds={result.totalSeconds}
+      correctWeight={config?.correctWeight ?? 90}
       onRestart={() => window.location.assign(`/quiz${window.location.search}`)}
       onStartNew={() => window.location.assign('/')}
       onBackHome={() => window.location.assign('/')}
