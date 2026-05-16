@@ -85,3 +85,16 @@ Distractors must be selected from the same context as the question: neighboring 
 Explanations should identify the correct principle, explain why it fits the prompt, and briefly clarify why the most plausible wrong options do not fit.
 
 See [`specs/content-model.md`](specs/content-model.md) for question format, tagging rules, and language conventions.
+
+## Adding Study Lessons
+
+When the user asks to add, generate, expand, rewrite, or improve study lessons, first read and follow [`specs/skills/study-lesson-authoring/SKILL.md`](specs/skills/study-lesson-authoring/SKILL.md).
+
+Study lessons live in `src/content/study/<difficulty>/<topic>.md`. Keep the lesson difficulty aligned with the parent folder and preserve the existing `defaultDomains` and `defaultTopics`.
+
+Use seniority as a progression of thinking:
+
+- Junior: recognize concepts, vocabulary, basic intent, and simple misuse.
+- Mid: distinguish similar concepts and choose based on local code pressure.
+- Senior: make design decisions using change axis, ownership, contracts, tests, refactoring path, and operational behavior.
+- Principal: treat concepts as cross-team architecture with governance, versioning, rollout, observability, and invariant protection.
