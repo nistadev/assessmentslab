@@ -1,22 +1,12 @@
 ---
 import { getCollection } from 'astro:content';
 import FooterBar from '../components/FooterBar.astro';
-import HomePage from '../components/HomePage';
+import StudyPage from '../components/StudyPage';
 import '../styles/global.css';
 
-const entries = await getCollection('questions');
-const studyEntries = await getCollection('study');
+const entries = await getCollection('study');
 
-const questions = entries.flatMap(entry =>
-  entry.data.questions.map((q, index) => ({
-    ...q,
-    questionId: `${entry.id}:${index}`,
-    domains: q.domains ?? entry.data.defaultDomains,
-    topics: q.topics ?? entry.data.defaultTopics,
-  }))
-);
-
-const studyLessons = studyEntries
+const lessons = entries
   .sort((a, b) => a.id.localeCompare(b.id))
   .flatMap(entry =>
     entry.data.lessons.map((lesson, index) => ({
@@ -33,17 +23,18 @@ const studyLessons = studyEntries
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>assessmentslab</title>
+    <title>Study | assessmentslab</title>
     <script is:inline>
       const storedTheme = localStorage.getItem('theme');
       const legacyTheme = storedTheme === 'dark' ? 'dark' : storedTheme;
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       const theme = legacyTheme === 'light' || legacyTheme === 'dark' ? legacyTheme : systemTheme;
       document.documentElement.dataset.theme = theme;
+      document.documentElement.dataset.appMode = 'study';
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
-    <HomePage questions={questions} studyLessons={studyLessons} client:load />
+    <StudyPage lessons={lessons} client:load />
     <FooterBar />
   </body>
 </html>

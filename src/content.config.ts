@@ -27,4 +27,28 @@ const questions = defineCollection({
   }),
 });
 
-export const collections = { questions };
+const study = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/study' }),
+  schema: z.object({
+    defaultDomains: z.array(z.string()).min(1),
+    defaultTopics: z.array(z.string()).min(1),
+    lessons: z.array(
+      z.object({
+        title: z.string(),
+        explanation: z.string(),
+        examples: z.array(
+          z.object({
+            label: z.string(),
+            description: z.string().optional(),
+            code: z.string().optional(),
+          })
+        ).min(1),
+        difficulty: difficultyEnum,
+        domains: z.array(z.string()).min(1).optional(),
+        topics: z.array(z.string()).min(1).optional(),
+      })
+    ),
+  }),
+});
+
+export const collections = { questions, study };

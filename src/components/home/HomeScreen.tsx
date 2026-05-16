@@ -6,11 +6,13 @@ import {
   getTopicLabel,
 } from "../../content/categories";
 import type {
+  AppMode,
   FeedbackMode,
   Question,
   QuestionDifficulty,
   QuizConfig,
   StoredQuizHistoryEntry,
+  StudyLesson,
   Theme,
 } from "../shared/types";
 import { NavHeader } from "../shared/NavHeader";
@@ -21,9 +23,10 @@ import {
   matchesDifficulty,
   questionMatchesSelection,
   readStoredQuizHistory,
+  studyLessonMatchesSelection,
 } from "../shared/utils";
 
-function getAvailableCount(
+function getAvailableQuizCount(
   questions: Question[],
   domains: string[],
   topics: string[],
@@ -33,6 +36,19 @@ function getAvailableCount(
     (q) =>
       questionMatchesSelection(q, domains, topics) &&
       matchesDifficulty(q, difficulties),
+  ).length;
+}
+
+function getAvailableStudyCount(
+  lessons: StudyLesson[],
+  domains: string[],
+  topics: string[],
+  difficulties: QuestionDifficulty[],
+) {
+  return lessons.filter(
+    (lesson) =>
+      studyLessonMatchesSelection(lesson, domains, topics) &&
+      difficulties.includes(lesson.difficulty),
   ).length;
 }
 
@@ -64,21 +80,41 @@ function getTopicsForDomains(topics: string[], domains: string[]) {
   });
 }
 
+function syncTopicsForDomains(
+  current: string[],
+  visibleTopics: string[],
+) {
+  const visibleTopicSet = new Set(visibleTopics);
+  const next = current.filter((topic) => visibleTopicSet.has(topic));
+  return [...new Set([...next, ...visibleTopics])];
+}
+
 export function HomeScreen({
-  domains,
-  topics,
+  mode,
+  onModeChange,
+  quizDomains,
+  quizTopics,
+  studyDomains,
+  studyTopics,
   totalQ,
   questions,
-  onStart,
+  studyLessons,
+  onStartQuiz,
+  onStartStudy,
   initialConfig,
   theme,
   onToggleTheme,
 }: {
-  domains: string[];
-  topics: string[];
+  mode: AppMode;
+  onModeChange: (mode: AppMode) => void;
+  quizDomains: string[];
+  quizTopics: string[];
+  studyDomains: string[];
+  studyTopics: string[];
   totalQ: number;
   questions: Question[];
-  onStart: (
+  studyLessons: StudyLesson[];
+  onStartQuiz: (
     selectedDomains: string[],
     selectedTopics: string[],
     timerMinutes: number,
@@ -86,18 +122,26 @@ export function HomeScreen({
     feedbackMode: FeedbackMode,
     difficulties: QuestionDifficulty[],
   ) => void;
+  onStartStudy: (
+    selectedDomains: string[],
+    selectedTopics: string[],
+    difficulties: QuestionDifficulty[],
+  ) => void;
   initialConfig?: QuizConfig | null;
   theme: Theme;
   onToggleTheme: () => void;
 }) {
-  const initialDomains = getInitialDomainSelection(domains, initialConfig);
-  const [selectedDomains, setSelectedDomains] = useState<string[]>(
-    () => initialDomains,
+  const initialQuizDomains = getInitialDomainSelection(
+    quizDomains,
+    initialConfig,
   );
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(() =>
-    getInitialTopicSelection(topics, initialDomains, initialConfig),
+  const [quizSelectedDomains, setQuizSelectedDomains] = useState<string[]>(
+    () => initialQuizDomains,
   );
-  const [difficulties, setDifficulties] = useState<QuestionDifficulty[]>(
+  const [quizSelectedTopics, setQuizSelectedTopics] = useState<string[]>(() =>
+    getInitialTopicSelection(quizTopics, initialQuizDomains, initialConfig),
+  );
+  const [quizDifficulties, setQuizDifficulties] = useState<QuestionDifficulty[]>(
     initialConfig?.difficulties ?? DIFFICULTY_OPTIONS,
   );
   const [timerMinutes, setTimerMinutes] = useState(
@@ -109,9 +153,35 @@ export function HomeScreen({
   const [feedbackMode, setFeedbackMode] = useState<FeedbackMode>(
     initialConfig?.feedbackMode ?? "end",
   );
+
+  const [studySelectedDomains, setStudySelectedDomains] = useState<string[]>(
+    [],
+  );
+  const [studySelectedTopics, setStudySelectedTopics] = useState<string[]>([]);
+  const [studyDifficulties, setStudyDifficulties] =
+    useState<QuestionDifficulty[]>(DIFFICULTY_OPTIONS);
+
   const [history, setHistory] = useState<StoredQuizHistoryEntry[]>([]);
+
+  const isStudyMode = mode === "study";
+  const domains = isStudyMode ? studyDomains : quizDomains;
+  const topics = isStudyMode ? studyTopics : quizTopics;
+  const selectedDomains = isStudyMode
+    ? studySelectedDomains
+    : quizSelectedDomains;
+  const selectedTopics = isStudyMode ? studySelectedTopics : quizSelectedTopics;
+  const difficulties = isStudyMode ? studyDifficulties : quizDifficulties;
+  const setSelectedDomains = isStudyMode
+    ? setStudySelectedDomains
+    : setQuizSelectedDomains;
+  const setSelectedTopics = isStudyMode
+    ? setStudySelectedTopics
+    : setQuizSelectedTopics;
+  const setDifficulties = isStudyMode
+    ? setStudyDifficulties
+    : setQuizDifficulties;
+
   const visibleTopics = getTopicsForDomains(topics, selectedDomains);
-  const visibleTopicSet = new Set(visibleTopics);
   const domainOptions = domains.map(
     (domain) =>
       DOMAIN_OPTIONS.find((option) => option.domain === domain) ?? {
@@ -120,13 +190,35 @@ export function HomeScreen({
         description: "Custom practice domain.",
       },
   );
+  const quizAvailableCount = getAvailableQuizCount(
+    questions,
+    quizSelectedDomains,
+    quizSelectedTopics,
+    quizDifficulties,
+  );
+  const studyAvailableCount = getAvailableStudyCount(
+    studyLessons,
+    studySelectedDomains,
+    studySelectedTopics,
+    studyDifficulties,
+  );
+  const availableCount = isStudyMode ? studyAvailableCount : quizAvailableCount;
+  const activeChoiceClass = isStudyMode
+    ? "border-info/40 bg-info/10 text-info"
+    : "border-primary/30 bg-primary/8 text-primary/80";
+  const inactiveChoiceClass =
+    "border-base-content/20 text-base-content/50 hover:border-base-content/40";
+  const checkboxClass = isStudyMode ? "checkbox-info" : "checkbox-primary";
+  const activeButtonClass = isStudyMode
+    ? "btn-info btn-soft border-info/30"
+    : "btn-primary btn-soft border-primary/30";
 
   useEffect(() => {
     if (!initialConfig) return;
 
-    setSelectedDomains(initialConfig.domains);
-    setSelectedTopics(initialConfig.topics);
-    setDifficulties(initialConfig.difficulties);
+    setQuizSelectedDomains(initialConfig.domains);
+    setQuizSelectedTopics(initialConfig.topics);
+    setQuizDifficulties(initialConfig.difficulties);
     setTimerMinutes(initialConfig.timerMinutes);
     setMaxQuestions(initialConfig.maxQuestions);
     setFeedbackMode(initialConfig.feedbackMode);
@@ -137,11 +229,28 @@ export function HomeScreen({
   }, []);
 
   useEffect(() => {
-    setSelectedTopics((current) => {
-      const next = current.filter((topic) => visibleTopicSet.has(topic));
-      return [...new Set([...next, ...visibleTopics])];
-    });
-  }, [selectedDomains]);
+    const nextVisibleTopics = getTopicsForDomains(
+      quizTopics,
+      quizSelectedDomains,
+    );
+    setQuizSelectedTopics((current) =>
+      syncTopicsForDomains(current, nextVisibleTopics),
+    );
+  }, [quizSelectedDomains, quizTopics]);
+
+  useEffect(() => {
+    const nextVisibleTopics = getTopicsForDomains(
+      studyTopics,
+      studySelectedDomains,
+    );
+    setStudySelectedTopics((current) =>
+      syncTopicsForDomains(current, nextVisibleTopics),
+    );
+  }, [studySelectedDomains, studyTopics]);
+
+  useEffect(() => {
+    setMaxQuestions(Math.min(20, quizAvailableCount || 1));
+  }, [quizAvailableCount]);
 
   const toggleDomain = (domain: string) =>
     setSelectedDomains((current) =>
@@ -177,32 +286,96 @@ export function HomeScreen({
         ? current.filter((level) => level !== difficulty)
         : [...current, difficulty],
     );
+  const changeMode = (nextMode: AppMode) => {
+    if (mode !== nextMode) onModeChange(nextMode);
+  };
+  const start = () => {
+    if (
+      selectedDomains.length === 0 ||
+      selectedTopics.length === 0 ||
+      difficulties.length === 0 ||
+      availableCount === 0
+    ) {
+      return;
+    }
 
-  const availableCount = getAvailableCount(
-    questions,
-    selectedDomains,
-    selectedTopics,
-    difficulties,
-  );
+    if (isStudyMode) {
+      onStartStudy(selectedDomains, selectedTopics, difficulties);
+      return;
+    }
 
-  useEffect(() => {
-    setMaxQuestions(Math.min(20, availableCount || 1));
-  }, [availableCount]);
+    onStartQuiz(
+      selectedDomains,
+      selectedTopics,
+      timerMinutes,
+      maxQuestions,
+      feedbackMode,
+      difficulties,
+    );
+  };
+  const modeButtonClass = (targetMode: AppMode) => {
+    if (mode !== targetMode) {
+      return "text-base-content/55 hover:bg-base-200/80 hover:text-base-content";
+    }
+
+    return targetMode === "study"
+      ? "border-info/30 bg-info/12 text-info"
+      : "border-primary/30 bg-primary/10 text-primary";
+  };
+
+  const startDisabled =
+    selectedDomains.length === 0 ||
+    selectedTopics.length === 0 ||
+    difficulties.length === 0 ||
+    availableCount === 0;
 
   return (
-    <div className="relative min-h-screen flex items-start justify-center px-4 py-2">
+    <div
+      className="home-root relative min-h-screen flex items-start justify-center px-4 py-2"
+      data-mode={mode}
+    >
       <div className="w-full max-w-2xl lg:max-w-5xl space-y-6">
-        <NavHeader theme={theme} onToggleTheme={onToggleTheme} />
+        <NavHeader
+          leftContent={
+            <div className="mode-switch inline-flex rounded-full border border-base-content/10 bg-base-100/80 p-1 backdrop-blur">
+              <button
+                type="button"
+                className={`rounded-full border border-transparent px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${modeButtonClass("quiz")}`}
+                onClick={() => changeMode("quiz")}
+                aria-pressed={mode === "quiz"}
+              >
+                Quiz
+              </button>
+              <button
+                type="button"
+                className={`rounded-full border border-transparent px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${modeButtonClass("study")}`}
+                onClick={() => changeMode("study")}
+                aria-pressed={mode === "study"}
+              >
+                Study
+              </button>
+            </div>
+          }
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+        />
         <div className="card brand-shell">
-          <div className="card-body gap-5  lg:grid lg:grid-cols-2">
+          <div className="card-body gap-5 lg:grid lg:grid-cols-2">
             <div className="col-span-2">
               <h1 className="brand-heading">
-                Stress-test your engineering instincts.
+                {isStudyMode
+                  ? "Study engineering concepts step by step."
+                  : "Stress-test your engineering instincts."}
               </h1>
               <p className="text-base-content/70 mt-2 max-w-xl">
-                assessmentslab drills interview-grade questions across development
-                disciplines with shuffled runs, timed rounds, and tight feedback
-                loops.
+                {isStudyMode
+                  ? "Read focused lessons across development disciplines with concept-first explanations and implementation examples."
+                  : "assessmentslab drills interview-grade questions across development disciplines with shuffled runs, timed rounds, and tight feedback loops."}
+              </p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-base-content/45">
+                {isStudyMode
+                  ? `${studyLessons.length} lessons available`
+                  : `${totalQ} questions available`}
               </p>
             </div>
             <div className="space-y-3">
@@ -213,8 +386,8 @@ export function HomeScreen({
                       Domains
                     </p>
                     <p className="text-xs text-base-content/50">
-                      Pick where questions should apply.{" "}
-                      {selectedDomains.length}/{domains.length} selected.
+                      Pick where {isStudyMode ? "lessons" : "questions"} should
+                      apply. {selectedDomains.length}/{domains.length} selected.
                     </p>
                   </div>
                   <button
@@ -233,13 +406,13 @@ export function HomeScreen({
                       key={option.domain}
                       className={`flex min-h-24 cursor-pointer gap-3 rounded-xl border p-3 transition-colors select-none ${
                         selectedDomains.includes(option.domain)
-                          ? "border-primary bg-primary/10 text-primary"
+                          ? activeChoiceClass
                           : "border-base-content/20 text-base-content hover:border-base-content/40"
                       }`}
                     >
                       <input
                         type="checkbox"
-                        className="checkbox checkbox-primary checkbox-xs mt-1"
+                        className={`checkbox ${checkboxClass} checkbox-xs mt-1`}
                         checked={selectedDomains.includes(option.domain)}
                         onChange={() => toggleDomain(option.domain)}
                       />
@@ -263,8 +436,8 @@ export function HomeScreen({
                       Topics
                     </p>
                     <p className="text-xs text-base-content/50">
-                      Shared topics only include questions tagged for selected
-                      domains. {selectedTopics.length} selected.
+                      Shared topics only include {isStudyMode ? "lessons" : "questions"} tagged
+                      for selected domains. {selectedTopics.length} selected.
                     </p>
                   </div>
                   <button
@@ -288,13 +461,13 @@ export function HomeScreen({
                         key={topic}
                         className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors select-none ${
                           selectedTopics.includes(topic)
-                            ? "border-primary/30 bg-primary/8 text-primary/80"
-                            : "border-base-content/20 text-base-content/50 hover:border-base-content/40"
+                            ? activeChoiceClass
+                            : inactiveChoiceClass
                         }`}
                       >
                         <input
                           type="checkbox"
-                          className="checkbox checkbox-primary checkbox-xs"
+                          className={`checkbox ${checkboxClass} checkbox-xs`}
                           checked={selectedTopics.includes(topic)}
                           onChange={() => toggleTopic(topic)}
                         />
@@ -325,13 +498,13 @@ export function HomeScreen({
                         key={option}
                         className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border transition-colors select-none ${
                           difficulties.includes(option)
-                            ? "border-primary/30 bg-primary/8 text-primary/80"
-                            : "border-base-content/20 text-base-content/50 hover:border-base-content/40"
+                            ? activeChoiceClass
+                            : inactiveChoiceClass
                         }`}
                       >
                         <input
                           type="checkbox"
-                          className="checkbox checkbox-primary checkbox-sm"
+                          className={`checkbox ${checkboxClass} checkbox-sm`}
                           checked={difficulties.includes(option)}
                           onChange={() => toggleDifficulty(option)}
                         />
@@ -343,142 +516,162 @@ export function HomeScreen({
                   </div>
                 </div>
 
-                <div className="form-control">
-                  <div className="label pb-1">
-                    <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">
-                      Timer (min)
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    min={1}
-                    max={120}
-                    step={1}
-                    className="input input-bordered w-full"
-                    value={timerMinutes}
-                    onChange={(e) =>
-                      setTimerMinutes(Math.max(1, Number(e.target.value) || 1))
-                    }
-                  />
-                  <div className="flex gap-1.5 mt-2 flex-wrap">
-                    {[1, 5, 10, 20].map((min) => (
-                      <button
-                        key={min}
-                        type="button"
-                        className={`btn btn-sm sm:btn-xs ${timerMinutes === min ? "btn-primary btn-soft border-primary/30" : "btn-ghost border border-base-content/20"}`}
-                        onClick={() => setTimerMinutes(min)}
-                      >
-                        {min}m
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="form-control">
-                  <div className="label items-center justify-between pb-1">
-                    <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">
-                      Max Questions
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    min={1}
-                    max={availableCount || 1}
-                    step={1}
-                    className="input input-bordered w-full"
-                    value={maxQuestions}
-                    onChange={(e) =>
-                      setMaxQuestions(Math.max(1, Number(e.target.value) || 1))
-                    }
-                  />
-                  <div className="flex gap-1.5 mt-2 flex-wrap">
-                    {[5, 10, 20, 40].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        className={`btn btn-sm sm:btn-xs ${maxQuestions === n ? "btn-primary btn-soft border-primary/30" : "btn-ghost border border-base-content/20"}`}
-                        onClick={() =>
-                          setMaxQuestions(Math.min(n, availableCount || 1))
+                {!isStudyMode && (
+                  <>
+                    <div className="form-control">
+                      <div className="label pb-1">
+                        <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">
+                          Timer (min)
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        step={1}
+                        className="input input-bordered w-full"
+                        value={timerMinutes}
+                        onChange={(e) =>
+                          setTimerMinutes(
+                            Math.max(1, Number(e.target.value) || 1),
+                          )
                         }
-                        disabled={(availableCount || 0) < n}
-                      >
-                        {n}
-                      </button>
-                    ))}
+                      />
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {[1, 5, 10, 20].map((min) => (
+                          <button
+                            key={min}
+                            type="button"
+                            className={`btn btn-sm sm:btn-xs ${
+                              timerMinutes === min
+                                ? activeButtonClass
+                                : "btn-ghost border border-base-content/20"
+                            }`}
+                            onClick={() => setTimerMinutes(min)}
+                          >
+                            {min}m
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="form-control">
+                      <div className="label items-center justify-between pb-1">
+                        <span className="label-text text-sm font-semibold text-base-content/70 uppercase tracking-wide">
+                          Max Questions
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        max={availableCount || 1}
+                        step={1}
+                        className="input input-bordered w-full"
+                        value={maxQuestions}
+                        onChange={(e) =>
+                          setMaxQuestions(
+                            Math.max(1, Number(e.target.value) || 1),
+                          )
+                        }
+                      />
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {[5, 10, 20, 40].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            className={`btn btn-sm sm:btn-xs ${
+                              maxQuestions === n
+                                ? activeButtonClass
+                                : "btn-ghost border border-base-content/20"
+                            }`}
+                            onClick={() =>
+                              setMaxQuestions(Math.min(n, availableCount || 1))
+                            }
+                            disabled={(availableCount || 0) < n}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className={`btn btn-sm sm:btn-xs ${
+                            maxQuestions === availableCount
+                              ? activeButtonClass
+                              : "btn-ghost border border-base-content/20"
+                          }`}
+                          onClick={() => setMaxQuestions(availableCount || 1)}
+                        >
+                          Max
+                        </button>
+                      </div>
+                      <div className="label pt-1">
+                        <span className="label-text-alt text-base-content/50">
+                          Up to {availableCount} available
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {!isStudyMode && (
+                <div>
+                  <p className="text-sm font-semibold mb-3 text-base-content/70 uppercase tracking-wide">
+                    Response Mode
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
                     <button
                       type="button"
-                      className={`btn btn-sm sm:btn-xs ${maxQuestions === availableCount ? "btn-primary btn-soft border-primary/30" : "btn-ghost border border-base-content/20"}`}
-                      onClick={() => setMaxQuestions(availableCount || 1)}
+                      className={`btn btn-sm ${
+                        feedbackMode === "end"
+                          ? activeButtonClass
+                          : "btn-ghost border border-base-content/20"
+                      }`}
+                      onClick={() => setFeedbackMode("end")}
+                      aria-pressed={feedbackMode === "end"}
                     >
-                      Max
+                      Show only at the end
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${
+                        feedbackMode === "immediate"
+                          ? activeButtonClass
+                          : "btn-ghost border border-base-content/20"
+                      }`}
+                      onClick={() => setFeedbackMode("immediate")}
+                      aria-pressed={feedbackMode === "immediate"}
+                    >
+                      Show response after check
                     </button>
                   </div>
-                  <div className="label pt-1">
-                    <span className="label-text-alt text-base-content/50">
-                      Up to {availableCount} available
-                    </span>
-                  </div>
                 </div>
-              </div>
-              <div>
-                <p className="text-sm font-semibold mb-3 text-base-content/70 uppercase tracking-wide">
-                  Response Mode
-                </p>
-                <div className="flex gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${feedbackMode === "end" ? "btn-primary btn-soft border-primary/30" : "btn-ghost border border-base-content/20"}`}
-                    onClick={() => setFeedbackMode("end")}
-                    aria-pressed={feedbackMode === "end"}
-                  >
-                    Show only at the end
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm ${feedbackMode === "immediate" ? "btn-primary btn-soft border-primary/30" : "btn-ghost border border-base-content/20"}`}
-                    onClick={() => setFeedbackMode("immediate")}
-                    aria-pressed={feedbackMode === "immediate"}
-                  >
-                    Show response after check
-                  </button>
+              )}
+
+              {isStudyMode && (
+                <div className="rounded-xl border border-info/20 bg-info/8 px-4 py-3 text-sm text-base-content/70">
+                  {availableCount} matching lessons. Lessons keep authored order
+                  and use linear navigation.
                 </div>
-              </div>
+              )}
 
               <button
-                className="btn btn-primary w-full mt-auto"
-                onClick={() =>
-                  selectedDomains.length > 0 &&
-                  selectedTopics.length > 0 &&
-                  difficulties.length > 0 &&
-                  availableCount > 0 &&
-                  onStart(
-                    selectedDomains,
-                    selectedTopics,
-                    timerMinutes,
-                    maxQuestions,
-                    feedbackMode,
-                    difficulties,
-                  )
-                }
-                disabled={
-                  selectedDomains.length === 0 ||
-                  selectedTopics.length === 0 ||
-                  difficulties.length === 0 ||
-                  availableCount === 0
-                }
+                className={`btn w-full mt-auto ${isStudyMode ? "btn-info" : "btn-primary"}`}
+                onClick={start}
+                disabled={startDisabled}
               >
-                Start Test →
+                {isStudyMode ? "Start Study" : "Start Test"}
               </button>
             </div>
           </div>
         </div>
 
-        {history.length > 0 && (
+        {!isStudyMode && history.length > 0 && (
           <div className="card brand-shell">
             <div className="card-body gap-4">
               <div>
                 <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">
-                  Latest Assesments
+                  Latest Assessments
                 </p>
               </div>
 

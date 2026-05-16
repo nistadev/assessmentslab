@@ -4,6 +4,8 @@ import type {
   QuestionDifficulty,
   QuizConfig,
   ShuffledQuestion,
+  StudyConfig,
+  StudyLesson,
   StoredQuizHistoryEntry,
   StoredQuizResult,
 } from './types';
@@ -81,8 +83,20 @@ export function buildQuizSearchParams(config: QuizConfig, uid: string): URLSearc
   return params;
 }
 
+export function buildStudySearchParams(config: StudyConfig, uid: string): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set('s', encodeStudyConfig(config));
+  params.set('uid', uid);
+  return params;
+}
+
 export interface ParsedQuizParams {
   config: QuizConfig;
+  uid: string;
+}
+
+export interface ParsedStudyParams {
+  config: StudyConfig;
   uid: string;
 }
 
@@ -150,6 +164,59 @@ export function parseQuizSearchParams(
   };
 }
 
+export function parseStudySearchParams(
+  searchParams: URLSearchParams,
+  availableDomains: string[],
+  availableTopics: string[],
+): ParsedStudyParams | null {
+  const encodedConfig = searchParams.get('s');
+  const uid = searchParams.get('uid');
+
+  if (!encodedConfig || !uid || !/^[a-z0-9]{6}$/i.test(uid)) return null;
+
+  const rawConfig = decodeStudyConfig(encodedConfig);
+
+  if (!rawConfig) return null;
+
+  const rawDomains = Array.isArray(rawConfig.domains) ? rawConfig.domains : [];
+  const rawTopics = Array.isArray(rawConfig.topics) ? rawConfig.topics : [];
+  const rawDifficulties = Array.isArray(rawConfig.difficulties) ? rawConfig.difficulties : [];
+
+  const allowedDomains = new Set(availableDomains);
+  const domains = rawDomains
+    .filter((domain): domain is string => typeof domain === 'string')
+    .map(domain => domain.trim())
+    .filter(domain => allowedDomains.has(domain));
+
+  const allowedTopics = new Set(availableTopics);
+  const topics = rawTopics
+    .filter((topic): topic is string => typeof topic === 'string')
+    .map(topic => topic.trim())
+    .filter(topic => allowedTopics.has(topic));
+
+  const difficulties = rawDifficulties
+    .filter((difficulty): difficulty is string => typeof difficulty === 'string')
+    .map(difficulty => difficulty.trim())
+    .filter(isQuestionDifficulty);
+
+  const uniqueDomains = [...new Set(domains)];
+  const uniqueTopics = [...new Set(topics)];
+  const uniqueDifficulties = [...new Set(difficulties)];
+
+  if (uniqueDomains.length === 0) return null;
+  if (uniqueTopics.length === 0) return null;
+  if (uniqueDifficulties.length === 0) return null;
+
+  return {
+    uid,
+    config: {
+      domains: uniqueDomains,
+      topics: uniqueTopics,
+      difficulties: uniqueDifficulties,
+    },
+  };
+}
+
 export const DIFFICULTY_OPTIONS: QuestionDifficulty[] = ['junior', 'mid', 'senior', 'principal'];
 
 export const DIFFICULTY_LABELS: Record<QuestionDifficulty, string> = {
@@ -209,6 +276,15 @@ export function questionMatchesSelection(
     && question.topics.some(topic => topics.includes(topic));
 }
 
+export function studyLessonMatchesSelection(
+  lesson: StudyLesson,
+  domains: string[],
+  topics: string[],
+) {
+  return lesson.domains.some(domain => domains.includes(domain))
+    && lesson.topics.some(topic => topics.includes(topic));
+}
+
 export function generateQuizUid(length = 6) {
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let uid = '';
@@ -219,6 +295,8 @@ export function generateQuizUid(length = 6) {
 
   return uid;
 }
+
+export const generateStudyUid = generateQuizUid;
 
 export function readStoredQuizQuestionIds(uid: string): string[] | null {
   const record = readStoredQuizRecord(uid);
@@ -295,6 +373,18 @@ function encodeQuizConfig(config: QuizConfig) {
 function decodeQuizConfig(value: string): QuizConfig | null {
   try {
     return JSON.parse(fromBase64Url(value)) as QuizConfig;
+  } catch {
+    return null;
+  }
+}
+
+function encodeStudyConfig(config: StudyConfig) {
+  return toBase64Url(JSON.stringify(config));
+}
+
+function decodeStudyConfig(value: string): StudyConfig | null {
+  try {
+    return JSON.parse(fromBase64Url(value)) as StudyConfig;
   } catch {
     return null;
   }

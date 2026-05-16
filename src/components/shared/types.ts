@@ -46,6 +46,8 @@ export interface StoredQuizHistoryEntry {
 
 export type Theme = 'light' | 'dark';
 
+export type AppMode = 'quiz' | 'study';
+
 export type FeedbackMode = 'immediate' | 'end';
 
 export type QuestionDifficulty = 'junior' | 'mid' | 'senior' | 'principal';
@@ -57,4 +59,26 @@ export interface QuizConfig {
   timerMinutes: number;
   maxQuestions: number;
   feedbackMode: FeedbackMode;
+}
+
+export interface StudyExample {
+  label: string;
+  description?: string;
+  code?: string;
+}
+
+export interface StudyLesson {
+  lessonId: string;
+  title: string;
+  explanation: string;
+  examples: StudyExample[];
+  difficulty: QuestionDifficulty;
+  domains: string[];
+  topics: string[];
+}
+
+export interface StudyConfig {
+  domains: string[];
+  topics: string[];
+  difficulties: QuestionDifficulty[];
 }
