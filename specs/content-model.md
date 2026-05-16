@@ -73,6 +73,17 @@ questions:
 | `domains` | No | Per-question override for `defaultDomains`. |
 | `topics` | No | Per-question override for `defaultTopics`. |
 
+### Option Quality
+
+Questions should test understanding, not pattern recognition. Do not make the correct option stand out by surrounding it with throwaway distractors.
+
+- Use at least two plausible distractors per question.
+- Avoid joke answers, impossible claims, unrelated concepts, and options that are obviously wrong without understanding the topic.
+- Choose distractors from the same context as the question: neighboring concepts, realistic-but-wrong fixes, common misconceptions, or examples that solve a nearby problem but not this one.
+- If the correct answer is a concept, wrong options should be related concepts with reasoning that almost fits the scenario but misses the key issue.
+- If the correct answer is an action, command, design choice, or refactor, wrong options should also be credible actions from the same domain.
+- Explanations should state why the correct option fits and why the most tempting wrong options do not.
+
 ---
 
 ## Tagging Rules

@@ -72,6 +72,16 @@ npm run preview   # preview production build
 
 ## Adding Questions
 
+When the user asks to add, generate, expand, rewrite, or improve quiz questions, first read and follow [`specs/skills/question-authoring/SKILL.md`](specs/skills/question-authoring/SKILL.md).
+
 Append to the `questions` array in the relevant `<difficulty>/<topic>.md` file. All questions in a file must match its folder's difficulty level. `npm run build` fails with a clear error if schema is invalid.
+
+When generating questions from study content, treat `src/content/study/<difficulty>/<topic>.md` as the source of concepts, examples, and level-appropriate language. A study topic may have 20 or more questions per difficulty; 20 is a useful minimum pool for a default quiz, not a hard content cap.
+
+Question options must not make the correct answer obvious. Avoid filler distractors such as impossible statements, joke answers, unrelated concepts, or obviously wrong process claims. Each question should have at least two plausible distractors that a learner could reasonably confuse with the correct answer.
+
+Distractors must be selected from the same context as the question: neighboring concepts, realistic-but-wrong fixes, common misconceptions, or examples that solve a nearby problem but not the one asked. If the answer is a concept, wrong options should be related concepts that almost fit the scenario. If the answer is an action or refactor, wrong options should also be credible actions or refactors with a clear reason they are not best for this prompt.
+
+Explanations should identify the correct principle, explain why it fits the prompt, and briefly clarify why the most plausible wrong options do not fit.
 
 See [`specs/content-model.md`](specs/content-model.md) for question format, tagging rules, and language conventions.
