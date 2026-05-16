@@ -4,12 +4,31 @@ import { NavHeader } from '../shared/NavHeader';
 import type { StudyLesson, Theme } from '../shared/types';
 import { getDifficultyLabel } from '../shared/utils';
 
+function formatDuration(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 export function StudyScreen({
   lesson,
   lessonIdx,
   total,
+  elapsedSeconds,
+  totalStudiedSeconds,
+  finished,
+  canTakeQuiz,
   onPrevious,
   onNext,
+  onFinish,
+  onStudyAgain,
+  onTakeQuiz,
   onBackHome,
   theme,
   onToggleTheme,
@@ -17,8 +36,15 @@ export function StudyScreen({
   lesson: StudyLesson;
   lessonIdx: number;
   total: number;
+  elapsedSeconds: number;
+  totalStudiedSeconds: number;
+  finished: boolean;
+  canTakeQuiz: boolean;
   onPrevious: () => void;
   onNext: () => void;
+  onFinish: () => void;
+  onStudyAgain: () => void;
+  onTakeQuiz: () => void;
   onBackHome: () => void;
   theme: Theme;
   onToggleTheme: () => void;
@@ -27,6 +53,9 @@ export function StudyScreen({
   const progressValue = lessonIdx + 1;
   const isFirst = lessonIdx === 0;
   const isLast = lessonIdx + 1 === total;
+  const displayedStudySeconds = finished
+    ? totalStudiedSeconds
+    : totalStudiedSeconds + elapsedSeconds;
 
   useEffect(() => {
     if (!didMountRef.current) {
@@ -62,6 +91,12 @@ export function StudyScreen({
             value={progressValue}
             max={total}
           />
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-base-content/60">
+            <span>Time Studied</span>
+            <span className="font-mono text-[12px] font-bold normal-case tracking-normal text-base-content">
+              {formatDuration(displayedStudySeconds)}
+            </span>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -141,24 +176,55 @@ export function StudyScreen({
             </div>
           </section>
 
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              className="btn btn-ghost border border-base-content/20"
-              onClick={onPrevious}
-              disabled={isFirst}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="btn btn-info"
-              onClick={onNext}
-              disabled={isLast}
-            >
-              Next
-            </button>
-          </div>
+          {finished ? (
+            <section className="rounded-xl border border-info/20 bg-info/8 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-[0.14em] text-info">
+                    Session Finished
+                  </p>
+                  <p className="mt-1 text-sm text-base-content/65">
+                    {total} lessons completed. Total study time: {formatDuration(totalStudiedSeconds)}.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline border-info/30 text-info"
+                    onClick={onStudyAgain}
+                  >
+                    Study Again
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-info"
+                    onClick={onTakeQuiz}
+                    disabled={!canTakeQuiz}
+                  >
+                    Take Quiz
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className="btn btn-ghost border border-base-content/20"
+                onClick={onPrevious}
+                disabled={isFirst}
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                className="btn btn-info"
+                onClick={isLast ? onFinish : onNext}
+              >
+                {isLast ? 'Finish' : 'Next'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

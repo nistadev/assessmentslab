@@ -40,8 +40,10 @@ export interface StoredQuizResult {
 export interface StoredQuizHistoryEntry {
   uid: string;
   config: QuizConfig;
-  result: StoredQuizResult;
+  result?: StoredQuizResult;
   trialCount: number;
+  startedAt?: string;
+  lastUsedAt?: string;
 }
 
 export interface StoredStudyHistoryEntry {
@@ -50,6 +52,14 @@ export interface StoredStudyHistoryEntry {
   trialCount: number;
   startedAt: string;
   lastUsedAt: string;
+  result?: StoredStudyResult;
+}
+
+export interface StoredStudyResult {
+  elapsedSeconds: number;
+  lessonCount: number;
+  updatedAt: string;
+  finishedAt?: string;
 }
 
 export type Theme = 'light' | 'dark';

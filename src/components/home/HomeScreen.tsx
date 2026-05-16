@@ -20,6 +20,8 @@ import { NavHeader } from "../shared/NavHeader";
 import {
   buildQuizSearchParams,
   buildStudySearchParams,
+  deleteStoredQuizSession,
+  deleteStoredStudySession,
   DIFFICULTY_LABELS,
   DIFFICULTY_OPTIONS,
   matchesDifficulty,
@@ -90,6 +92,18 @@ function syncTopicsForDomains(
   const visibleTopicSet = new Set(visibleTopics);
   const next = current.filter((topic) => visibleTopicSet.has(topic));
   return [...new Set([...next, ...visibleTopics])];
+}
+
+function formatDuration(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 export function HomeScreen({
@@ -293,6 +307,14 @@ export function HomeScreen({
     );
   const changeMode = (nextMode: AppMode) => {
     if (mode !== nextMode) onModeChange(nextMode);
+  };
+  const removeQuizHistoryEntry = (uid: string) => {
+    deleteStoredQuizSession(uid);
+    setQuizHistory(readStoredQuizHistory());
+  };
+  const removeStudyHistoryEntry = (uid: string) => {
+    deleteStoredStudySession(uid);
+    setStudyHistory(readStoredStudyHistory());
   };
   const start = () => {
     if (
@@ -683,29 +705,54 @@ export function HomeScreen({
               <div className="flex flex-col gap-3">
                 {quizHistory.map((entry) => {
                   const params = buildQuizSearchParams(entry.config, entry.uid);
+                  const quizUrl = `/quiz?${params.toString()}`;
                   const resultUrl = `/results?${params.toString()}`;
-                  const accuracyRatio =
-                    entry.result.score /
-                    Math.max(entry.result.answers.length, 1);
-                  const speedRatio = Math.max(
-                    0,
-                    (entry.result.totalSeconds - entry.result.elapsedSeconds) /
-                      Math.max(entry.result.totalSeconds, 1),
-                  );
-                  const performancePct = Math.round(
-                    (accuracyRatio * 0.9 + speedRatio * 0.1) * 100,
-                  );
-                  const minutes = Math.floor(entry.result.elapsedSeconds / 60);
-                  const seconds = String(
-                    entry.result.elapsedSeconds % 60,
-                  ).padStart(2, "0");
+                  const targetUrl = entry.result ? resultUrl : quizUrl;
+                  const performancePct = entry.result
+                    ? Math.round(
+                        (
+                          (entry.result.score /
+                            Math.max(entry.result.answers.length, 1)) *
+                            0.9 +
+                          Math.max(
+                            0,
+                            (entry.result.totalSeconds -
+                              entry.result.elapsedSeconds) /
+                              Math.max(entry.result.totalSeconds, 1),
+                          ) *
+                            0.1
+                        ) *
+                          100,
+                      )
+                    : null;
+                  const minutes = entry.result
+                    ? Math.floor(entry.result.elapsedSeconds / 60)
+                    : 0;
+                  const seconds = entry.result
+                    ? String(entry.result.elapsedSeconds % 60).padStart(2, "0")
+                    : "00";
+                  const openedAt = entry.result?.finishedAt
+                    ? new Date(entry.result.finishedAt).toLocaleString()
+                    : entry.lastUsedAt
+                      ? new Date(entry.lastUsedAt).toLocaleString()
+                      : entry.startedAt
+                        ? new Date(entry.startedAt).toLocaleString()
+                        : null;
 
                   return (
-                    <button
+                    <article
                       key={entry.uid}
-                      type="button"
                       className="cursor-pointer text-left rounded-xl border border-base-content/10 bg-base-200/80 px-3 py-3 transition-all hover:bg-base-200 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-primary)_20%,transparent),0_0_18px_-6px_color-mix(in_oklab,var(--color-primary)_38%,transparent)]"
-                      onClick={() => window.location.assign(resultUrl)}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => window.location.assign(targetUrl)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          window.location.assign(targetUrl);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -717,34 +764,54 @@ export function HomeScreen({
                             {entry.config.topics.map(getTopicLabel).join(", ")}
                           </p>
                           <p className="mt-1 text-[11px] text-base-content/50">
-                            Latest taken at:{" "}
-                            {new Date(entry.result.finishedAt).toLocaleString()}
+                            {entry.result ? "Latest taken" : "Started"}:{" "}
+                            {openedAt ?? "unknown time"}
                           </p>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <span className="badge badge-primary badge-md">
-                            {performancePct}%
-                          </span>
-                          <p className="mt-1 text-[11px] text-base-content/50">
-                            {entry.trialCount}{" "}
-                            {entry.trialCount === 1 ? "trial" : "trials"}
-                          </p>
+                        <div className="flex shrink-0 items-start gap-2">
+                          {performancePct !== null && (
+                            <span className="badge badge-primary badge-md">
+                              {performancePct}%
+                            </span>
+                          )}
+                          <div className="text-right">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs border border-base-content/15 text-base-content/55"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeQuizHistoryEntry(entry.uid);
+                              }}
+                            >
+                              Remove
+                            </button>
+                            <p className="mt-1 text-[11px] text-base-content/50">
+                              {entry.trialCount}{" "}
+                              {entry.result
+                                ? entry.trialCount === 1 ? "trial" : "trials"
+                                : entry.trialCount === 1 ? "intent" : "intents"}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-base-content/65">
-                        <span className="badge badge-outline badge-sm">
-                          {entry.result.score}/{entry.result.answers.length}{" "}
-                          correct
-                        </span>
-                        <span className="badge badge-outline badge-sm">
-                          {minutes}:{seconds}
-                        </span>
+                        {entry.result && (
+                          <>
+                            <span className="badge badge-outline badge-sm">
+                              {entry.result.score}/{entry.result.answers.length}{" "}
+                              correct
+                            </span>
+                            <span className="badge badge-outline badge-sm">
+                              {minutes}:{seconds}
+                            </span>
+                          </>
+                        )}
                         <span className="badge badge-outline badge-sm">
                           {entry.config.maxQuestions} max
                         </span>
                       </div>
-                    </button>
+                    </article>
                   );
                 })}
               </div>
@@ -766,13 +833,26 @@ export function HomeScreen({
                   const params = buildStudySearchParams(entry.config, entry.uid);
                   const studyUrl = `/study?${params.toString()}`;
                   const startedAt = new Date(entry.lastUsedAt).toLocaleString();
+                  const finishedAt = entry.result
+                    ? entry.result.finishedAt
+                      ? new Date(entry.result.finishedAt).toLocaleString()
+                      : new Date(entry.result.updatedAt).toLocaleString()
+                    : null;
 
                   return (
-                    <button
+                    <article
                       key={entry.uid}
-                      type="button"
                       className="cursor-pointer text-left rounded-xl border border-base-content/10 bg-base-200/80 px-3 py-3 transition-all hover:bg-base-200 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-info)_20%,transparent),0_0_18px_-6px_color-mix(in_oklab,var(--color-info)_38%,transparent)]"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => window.location.assign(studyUrl)}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          window.location.assign(studyUrl);
+                        }
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -784,21 +864,37 @@ export function HomeScreen({
                             {entry.config.topics.map(getTopicLabel).join(", ")}
                           </p>
                           <p className="mt-1 text-[11px] text-base-content/50">
-                            Last opened: {startedAt}
+                            {finishedAt
+                              ? `${entry.result?.finishedAt ? "Finished" : "Last studied"}: ${finishedAt}`
+                              : `Last opened: ${startedAt}`}
                           </p>
                         </div>
-                        <div className="shrink-0 text-right">
-                          <span className="badge badge-info badge-md">
-                            Practise again
-                          </span>
-                          <p className="mt-1 text-[11px] text-base-content/50">
-                            {entry.trialCount}{" "}
-                            {entry.trialCount === 1 ? "session" : "sessions"}
-                          </p>
+                        <div className="flex shrink-0 items-start gap-2">
+                          <div className="text-right">
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs border border-base-content/15 text-base-content/55"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                removeStudyHistoryEntry(entry.uid);
+                              }}
+                            >
+                              Remove
+                            </button>
+                            <p className="mt-1 text-[11px] text-base-content/50">
+                              {entry.trialCount}{" "}
+                              {entry.trialCount === 1 ? "session" : "sessions"}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
                       <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-base-content/65">
+                        {entry.result && (
+                          <span className="badge badge-outline badge-sm">
+                            {formatDuration(entry.result.elapsedSeconds)} studied
+                          </span>
+                        )}
                         <span className="badge badge-outline badge-sm">
                           {entry.config.difficulties.length} difficulty levels
                         </span>
@@ -806,7 +902,7 @@ export function HomeScreen({
                           Started {new Date(entry.startedAt).toLocaleDateString()}
                         </span>
                       </div>
-                    </button>
+                    </article>
                   );
                 })}
               </div>

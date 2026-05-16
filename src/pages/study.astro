@@ -5,6 +5,7 @@ import StudyPage from '../components/StudyPage';
 import '../styles/global.css';
 
 const entries = await getCollection('study');
+const questionEntries = await getCollection('questions');
 
 const lessons = entries
   .sort((a, b) => a.id.localeCompare(b.id))
@@ -16,6 +17,15 @@ const lessons = entries
       topics: lesson.topics ?? entry.data.defaultTopics,
     }))
   );
+
+const questions = questionEntries.flatMap(entry =>
+  entry.data.questions.map((q, index) => ({
+    ...q,
+    questionId: `${entry.id}:${index}`,
+    domains: q.domains ?? entry.data.defaultDomains,
+    topics: q.topics ?? entry.data.defaultTopics,
+  }))
+);
 ---
 
 <!doctype html>
@@ -34,7 +44,7 @@ const lessons = entries
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
-    <StudyPage lessons={lessons} client:load />
+    <StudyPage lessons={lessons} questions={questions} client:load />
     <FooterBar />
   </body>
 </html>

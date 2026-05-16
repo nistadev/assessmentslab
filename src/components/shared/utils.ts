@@ -9,6 +9,7 @@ import type {
   StoredQuizHistoryEntry,
   StoredQuizResult,
   StoredStudyHistoryEntry,
+  StoredStudyResult,
 } from './types';
 import { getTopicLabel } from '../../content/categories';
 
@@ -20,6 +21,8 @@ interface StoredQuizRecord {
   config?: QuizConfig;
   result?: StoredQuizResult;
   trialCount?: number;
+  startedAt?: string;
+  lastUsedAt?: string;
 }
 
 interface StoredStudyRecord {
@@ -27,6 +30,7 @@ interface StoredStudyRecord {
   startedAt?: string;
   lastUsedAt?: string;
   trialCount?: number;
+  result?: StoredStudyResult;
 }
 
 
@@ -321,21 +325,18 @@ export function writeStoredQuizQuestionIds(uid: string, questionIds: string[]) {
 
 export function writeStoredQuizConfig(uid: string, config: QuizConfig) {
   const record = readStoredQuizRecord(uid) ?? {};
-  writeStoredQuizRecord(uid, { ...record, config });
+  const now = new Date().toISOString();
+  writeStoredQuizRecord(uid, {
+    ...record,
+    config,
+    startedAt: record.startedAt ?? now,
+    lastUsedAt: now,
+  });
 }
 
 export function readStoredQuizResult(uid: string): StoredQuizResult | null {
   const record = readStoredQuizRecord(uid);
-  const result = record?.result;
-
-  if (!result) return null;
-  if (typeof result.score !== 'number') return null;
-  if (!Array.isArray(result.answers)) return null;
-  if (typeof result.elapsedSeconds !== 'number') return null;
-  if (typeof result.totalSeconds !== 'number') return null;
-  if (typeof result.finishedAt !== 'string') return null;
-
-  return result;
+  return isValidStoredQuizResult(record?.result) ? record.result : null;
 }
 
 export function writeStoredQuizResult(uid: string, result: StoredQuizResult) {
@@ -343,6 +344,7 @@ export function writeStoredQuizResult(uid: string, result: StoredQuizResult) {
   writeStoredQuizRecord(uid, {
     ...record,
     result,
+    lastUsedAt: result.finishedAt,
     trialCount: Math.max(0, record.trialCount ?? 0) + 1,
   });
 }
@@ -359,20 +361,28 @@ export function readStoredQuizHistory(limit = 8): StoredQuizHistoryEntry[] {
     const uid = key.slice(QUIZ_STORAGE_PREFIX.length);
     const record = readStoredQuizRecord(uid);
 
-    if (!record?.config || !record.result) continue;
+    if (!record?.config) continue;
     if (!isValidQuizConfig(record.config)) continue;
+    const result = isValidStoredQuizResult(record.result) ? record.result : undefined;
 
     history.push({
       uid,
       config: record.config,
-      result: record.result,
+      result,
       trialCount: Math.max(1, record.trialCount ?? 1),
+      startedAt: typeof record.startedAt === 'string' ? record.startedAt : undefined,
+      lastUsedAt: typeof record.lastUsedAt === 'string' ? record.lastUsedAt : undefined,
     });
   }
 
   return history
-    .sort((a, b) => Date.parse(b.result.finishedAt) - Date.parse(a.result.finishedAt))
+    .sort((a, b) => getQuizHistoryTime(b) - getQuizHistoryTime(a))
     .slice(0, limit);
+}
+
+export function deleteStoredQuizSession(uid: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(`${QUIZ_STORAGE_PREFIX}${uid}`);
 }
 
 export function writeStoredStudySession(uid: string, config: StudyConfig) {
@@ -386,6 +396,23 @@ export function writeStoredStudySession(uid: string, config: StudyConfig) {
     lastUsedAt: now,
     trialCount: Math.max(0, record.trialCount ?? 0) + 1,
   });
+}
+
+export function readStoredStudyResult(uid: string): StoredStudyResult | null {
+  const record = readStoredStudyRecord(uid);
+  return normalizeStoredStudyResult(record?.result);
+}
+
+export function writeStoredStudyResult(uid: string, result: StoredStudyResult) {
+  const record = readStoredStudyRecord(uid) ?? {};
+
+  writeStoredStudyRecord(uid, {
+    ...record,
+    result,
+    lastUsedAt: result.finishedAt ?? result.updatedAt,
+  });
+
+  return result;
 }
 
 export function readStoredStudyHistory(limit = 8): StoredStudyHistoryEntry[] {
@@ -405,18 +432,26 @@ export function readStoredStudyHistory(limit = 8): StoredStudyHistoryEntry[] {
     if (typeof record.startedAt !== 'string') continue;
     if (typeof record.lastUsedAt !== 'string') continue;
 
+    const result = normalizeStoredStudyResult(record.result) ?? undefined;
+
     history.push({
       uid,
       config: record.config,
       trialCount: Math.max(1, record.trialCount ?? 1),
       startedAt: record.startedAt,
       lastUsedAt: record.lastUsedAt,
+      result,
     });
   }
 
   return history
     .sort((a, b) => Date.parse(b.lastUsedAt) - Date.parse(a.lastUsedAt))
     .slice(0, limit);
+}
+
+export function deleteStoredStudySession(uid: string) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(`${STUDY_STORAGE_PREFIX}${uid}`);
 }
 
 function encodeQuizConfig(config: QuizConfig) {
@@ -509,6 +544,24 @@ function isValidQuizConfig(value: unknown): value is QuizConfig {
     && (config.feedbackMode === 'end' || config.feedbackMode === 'immediate');
 }
 
+function isValidStoredQuizResult(value: unknown): value is StoredQuizResult {
+  if (!value || typeof value !== 'object') return false;
+
+  const result = value as StoredQuizResult;
+
+  return typeof result.score === 'number'
+    && Array.isArray(result.answers)
+    && typeof result.elapsedSeconds === 'number'
+    && typeof result.totalSeconds === 'number'
+    && typeof result.finishedAt === 'string';
+}
+
+function getQuizHistoryTime(entry: StoredQuizHistoryEntry) {
+  return Date.parse(
+    entry.result?.finishedAt ?? entry.lastUsedAt ?? entry.startedAt ?? '',
+  ) || 0;
+}
+
 function isValidStudyConfig(value: unknown): value is StudyConfig {
   if (!value || typeof value !== 'object') return false;
 
@@ -520,4 +573,34 @@ function isValidStudyConfig(value: unknown): value is StudyConfig {
     && config.domains.every((domain) => typeof domain === 'string')
     && config.topics.every((topic) => typeof topic === 'string')
     && config.difficulties.every((difficulty) => isQuestionDifficulty(difficulty));
+}
+
+function normalizeStoredStudyResult(value: unknown): StoredStudyResult | null {
+  if (!value || typeof value !== 'object') return null;
+
+  const result = value as StoredStudyResult;
+  const updatedAt =
+    typeof result.updatedAt === 'string'
+      ? result.updatedAt
+      : typeof result.finishedAt === 'string'
+        ? result.finishedAt
+        : null;
+
+  if (!(typeof result.elapsedSeconds === 'number'
+    && Number.isFinite(result.elapsedSeconds)
+    && result.elapsedSeconds >= 0
+    && typeof result.lessonCount === 'number'
+    && Number.isFinite(result.lessonCount)
+    && result.lessonCount >= 0
+    && updatedAt
+    && (typeof result.finishedAt === 'undefined' || typeof result.finishedAt === 'string'))) {
+    return null;
+  }
+
+  return {
+    elapsedSeconds: result.elapsedSeconds,
+    lessonCount: result.lessonCount,
+    updatedAt,
+    finishedAt: result.finishedAt,
+  };
 }
