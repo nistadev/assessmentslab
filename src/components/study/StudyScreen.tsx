@@ -53,7 +53,7 @@ export function StudyScreen({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+        <div className="space-y-6">
           <section className="card brand-shell study-shell">
             <div className="card-body p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -73,7 +73,11 @@ export function StudyScreen({
               <h1 className="text-2xl font-black tracking-tight">
                 {lesson.title}
               </h1>
-              <p className="mt-4 whitespace-pre-line text-base leading-7 text-base-content/78">
+
+              <h2 className="mt-5 text-sm font-bold uppercase tracking-[0.14em] text-info">
+                Explanation
+              </h2>
+              <p className="mt-3 whitespace-pre-line text-base leading-7 text-base-content/78">
                 {lesson.explanation}
               </p>
 
@@ -90,54 +94,60 @@ export function StudyScreen({
             </div>
           </section>
 
-          <section className="space-y-3 lg:sticky lg:top-6">
-            {lesson.examples.map((example, index) => (
-              <article
-                key={`${example.label}:${index}`}
-                className="study-example rounded-xl border border-info/18 bg-base-100/80 p-4 shadow-sm backdrop-blur"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-info">
-                    {example.label}
-                  </h2>
-                  <span className="text-xs font-semibold text-base-content/40">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
+          <section className="space-y-3">
+            <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-info">
+              Examples
+            </h2>
 
-                {example.description && (
-                  <p className="mt-2 text-sm leading-6 text-base-content/68">
-                    {example.description}
-                  </p>
-                )}
+            <div className="space-y-3">
+              {lesson.examples.map((example, index) => (
+                <article
+                  key={`${example.label}:${index}`}
+                  className="study-example rounded-xl border border-info/18 bg-base-100/80 p-4 shadow-sm backdrop-blur"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-info">
+                      {example.label}
+                    </h3>
+                    <span className="text-xs font-semibold text-base-content/40">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                  </div>
 
-                {example.code && (
-                  <pre className="mt-3 overflow-x-auto rounded-xl border border-base-content/10 bg-base-200/85 p-3 text-xs leading-5 text-base-content">
-                    <code>{example.code}</code>
-                  </pre>
-                )}
-              </article>
-            ))}
+                  {example.description && (
+                    <p className="mt-2 text-sm leading-6 text-base-content/68">
+                      {example.description}
+                    </p>
+                  )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                className="btn btn-ghost border border-base-content/20"
-                onClick={onPrevious}
-                disabled={isFirst}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="btn btn-info"
-                onClick={onNext}
-                disabled={isLast}
-              >
-                Next
-              </button>
+                  {example.code && (
+                    <pre className="mt-3 overflow-x-auto rounded-xl border border-base-content/10 bg-base-200/85 p-3 text-xs leading-5 text-base-content">
+                      <code>{example.code}</code>
+                    </pre>
+                  )}
+                </article>
+              ))}
             </div>
           </section>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              className="btn btn-ghost border border-base-content/20"
+              onClick={onPrevious}
+              disabled={isFirst}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="btn btn-info"
+              onClick={onNext}
+              disabled={isLast}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>
