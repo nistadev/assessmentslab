@@ -12,17 +12,20 @@ import type {
   QuestionDifficulty,
   QuizConfig,
   StoredQuizHistoryEntry,
+  StoredStudyHistoryEntry,
   StudyLesson,
   Theme,
 } from "../shared/types";
 import { NavHeader } from "../shared/NavHeader";
 import {
   buildQuizSearchParams,
+  buildStudySearchParams,
   DIFFICULTY_LABELS,
   DIFFICULTY_OPTIONS,
   matchesDifficulty,
   questionMatchesSelection,
   readStoredQuizHistory,
+  readStoredStudyHistory,
   studyLessonMatchesSelection,
 } from "../shared/utils";
 
@@ -161,7 +164,8 @@ export function HomeScreen({
   const [studyDifficulties, setStudyDifficulties] =
     useState<QuestionDifficulty[]>(DIFFICULTY_OPTIONS);
 
-  const [history, setHistory] = useState<StoredQuizHistoryEntry[]>([]);
+  const [quizHistory, setQuizHistory] = useState<StoredQuizHistoryEntry[]>([]);
+  const [studyHistory, setStudyHistory] = useState<StoredStudyHistoryEntry[]>([]);
 
   const isStudyMode = mode === "study";
   const domains = isStudyMode ? studyDomains : quizDomains;
@@ -225,7 +229,8 @@ export function HomeScreen({
   }, [initialConfig]);
 
   useEffect(() => {
-    setHistory(readStoredQuizHistory());
+    setQuizHistory(readStoredQuizHistory());
+    setStudyHistory(readStoredStudyHistory());
   }, []);
 
   useEffect(() => {
@@ -666,7 +671,7 @@ export function HomeScreen({
           </div>
         </div>
 
-        {!isStudyMode && history.length > 0 && (
+        {!isStudyMode && quizHistory.length > 0 && (
           <div className="card brand-shell">
             <div className="card-body gap-4">
               <div>
@@ -676,7 +681,7 @@ export function HomeScreen({
               </div>
 
               <div className="flex flex-col gap-3">
-                {history.map((entry) => {
+                {quizHistory.map((entry) => {
                   const params = buildQuizSearchParams(entry.config, entry.uid);
                   const resultUrl = `/results?${params.toString()}`;
                   const accuracyRatio =
@@ -737,6 +742,68 @@ export function HomeScreen({
                         </span>
                         <span className="badge badge-outline badge-sm">
                           {entry.config.maxQuestions} max
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isStudyMode && studyHistory.length > 0 && (
+          <div className="card brand-shell">
+            <div className="card-body gap-4">
+              <div>
+                <p className="text-sm font-semibold text-base-content/70 uppercase tracking-wide">
+                  Latest Study Sessions
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {studyHistory.map((entry) => {
+                  const params = buildStudySearchParams(entry.config, entry.uid);
+                  const studyUrl = `/study?${params.toString()}`;
+                  const startedAt = new Date(entry.lastUsedAt).toLocaleString();
+
+                  return (
+                    <button
+                      key={entry.uid}
+                      type="button"
+                      className="cursor-pointer text-left rounded-xl border border-base-content/10 bg-base-200/80 px-3 py-3 transition-all hover:bg-base-200 hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-info)_20%,transparent),0_0_18px_-6px_color-mix(in_oklab,var(--color-info)_38%,transparent)]"
+                      onClick={() => window.location.assign(studyUrl)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-base-content">
+                            {entry.config.domains
+                              .map(getDomainLabel)
+                              .join(", ")}{" "}
+                            ·{" "}
+                            {entry.config.topics.map(getTopicLabel).join(", ")}
+                          </p>
+                          <p className="mt-1 text-[11px] text-base-content/50">
+                            Last opened: {startedAt}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <span className="badge badge-info badge-md">
+                            Practise again
+                          </span>
+                          <p className="mt-1 text-[11px] text-base-content/50">
+                            {entry.trialCount}{" "}
+                            {entry.trialCount === 1 ? "session" : "sessions"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-base-content/65">
+                        <span className="badge badge-outline badge-sm">
+                          {entry.config.difficulties.length} difficulty levels
+                        </span>
+                        <span className="badge badge-outline badge-sm">
+                          Started {new Date(entry.startedAt).toLocaleDateString()}
                         </span>
                       </div>
                     </button>

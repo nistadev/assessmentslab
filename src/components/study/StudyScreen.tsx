@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { getDomainLabel, getTopicLabel } from '../../content/categories';
 import { NavHeader } from '../shared/NavHeader';
 import type { StudyLesson, Theme } from '../shared/types';
@@ -22,9 +23,19 @@ export function StudyScreen({
   theme: Theme;
   onToggleTheme: () => void;
 }) {
+  const didMountRef = useRef(false);
   const progressValue = lessonIdx + 1;
   const isFirst = lessonIdx === 0;
   const isLast = lessonIdx + 1 === total;
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [lessonIdx]);
 
   return (
     <div

@@ -44,6 +44,14 @@ export interface StoredQuizHistoryEntry {
   trialCount: number;
 }
 
+export interface StoredStudyHistoryEntry {
+  uid: string;
+  config: StudyConfig;
+  trialCount: number;
+  startedAt: string;
+  lastUsedAt: string;
+}
+
 export type Theme = 'light' | 'dark';
 
 export type AppMode = 'quiz' | 'study';

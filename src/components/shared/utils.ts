@@ -8,15 +8,24 @@ import type {
   StudyLesson,
   StoredQuizHistoryEntry,
   StoredQuizResult,
+  StoredStudyHistoryEntry,
 } from './types';
 import { getTopicLabel } from '../../content/categories';
 
 const QUIZ_STORAGE_PREFIX = 'assessmentslab.quiz.';
+const STUDY_STORAGE_PREFIX = 'assessmentslab.study.';
 
 interface StoredQuizRecord {
   questionIds?: string[];
   config?: QuizConfig;
   result?: StoredQuizResult;
+  trialCount?: number;
+}
+
+interface StoredStudyRecord {
+  config?: StudyConfig;
+  startedAt?: string;
+  lastUsedAt?: string;
   trialCount?: number;
 }
 
@@ -366,6 +375,50 @@ export function readStoredQuizHistory(limit = 8): StoredQuizHistoryEntry[] {
     .slice(0, limit);
 }
 
+export function writeStoredStudySession(uid: string, config: StudyConfig) {
+  const record = readStoredStudyRecord(uid) ?? {};
+  const now = new Date().toISOString();
+
+  writeStoredStudyRecord(uid, {
+    ...record,
+    config,
+    startedAt: record.startedAt ?? now,
+    lastUsedAt: now,
+    trialCount: Math.max(0, record.trialCount ?? 0) + 1,
+  });
+}
+
+export function readStoredStudyHistory(limit = 8): StoredStudyHistoryEntry[] {
+  if (typeof window === 'undefined') return [];
+
+  const history: StoredStudyHistoryEntry[] = [];
+
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (!key?.startsWith(STUDY_STORAGE_PREFIX)) continue;
+
+    const uid = key.slice(STUDY_STORAGE_PREFIX.length);
+    const record = readStoredStudyRecord(uid);
+
+    if (!record?.config) continue;
+    if (!isValidStudyConfig(record.config)) continue;
+    if (typeof record.startedAt !== 'string') continue;
+    if (typeof record.lastUsedAt !== 'string') continue;
+
+    history.push({
+      uid,
+      config: record.config,
+      trialCount: Math.max(1, record.trialCount ?? 1),
+      startedAt: record.startedAt,
+      lastUsedAt: record.lastUsedAt,
+    });
+  }
+
+  return history
+    .sort((a, b) => Date.parse(b.lastUsedAt) - Date.parse(a.lastUsedAt))
+    .slice(0, limit);
+}
+
 function encodeQuizConfig(config: QuizConfig) {
   return toBase64Url(JSON.stringify(config));
 }
@@ -426,6 +479,23 @@ function writeStoredQuizRecord(uid: string, record: StoredQuizRecord) {
   window.localStorage.setItem(`${QUIZ_STORAGE_PREFIX}${uid}`, JSON.stringify(record));
 }
 
+function readStoredStudyRecord(uid: string): StoredStudyRecord | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(`${STUDY_STORAGE_PREFIX}${uid}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredStudyRecord;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredStudyRecord(uid: string, record: StoredStudyRecord) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(`${STUDY_STORAGE_PREFIX}${uid}`, JSON.stringify(record));
+}
+
 function isValidQuizConfig(value: unknown): value is QuizConfig {
   if (!value || typeof value !== 'object') return false;
 
@@ -437,4 +507,17 @@ function isValidQuizConfig(value: unknown): value is QuizConfig {
     && typeof config.timerMinutes === 'number'
     && typeof config.maxQuestions === 'number'
     && (config.feedbackMode === 'end' || config.feedbackMode === 'immediate');
+}
+
+function isValidStudyConfig(value: unknown): value is StudyConfig {
+  if (!value || typeof value !== 'object') return false;
+
+  const config = value as StudyConfig;
+
+  return Array.isArray(config.domains)
+    && Array.isArray(config.topics)
+    && Array.isArray(config.difficulties)
+    && config.domains.every((domain) => typeof domain === 'string')
+    && config.topics.every((topic) => typeof topic === 'string')
+    && config.difficulties.every((difficulty) => isQuestionDifficulty(difficulty));
 }

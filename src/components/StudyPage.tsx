@@ -4,6 +4,7 @@ import type { StudyLesson, Theme } from './shared/types';
 import {
   parseStudySearchParams,
   studyLessonMatchesSelection,
+  writeStoredStudySession,
 } from './shared/utils';
 
 export default function StudyPage({ lessons }: { lessons: StudyLesson[] }) {
@@ -54,6 +55,7 @@ export default function StudyPage({ lessons }: { lessons: StudyLesson[] }) {
 
     setFilteredLessons(matchingLessons);
     setLessonIdx(0);
+    writeStoredStudySession(parsed.uid, config);
     setReady(true);
   }, []);
 

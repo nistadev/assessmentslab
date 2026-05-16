@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { NavHeader } from '../shared/NavHeader';
 import { QuestionPrompt } from './QuestionPrompt';
 import { QuizOptionList } from './QuizOptionList';
@@ -40,6 +41,7 @@ export function QuizScreen({
   onToggleTheme: () => void;
   feedbackMode: FeedbackMode;
 }) {
+  const didMountRef = useRef(false);
   const mins = String(Math.floor(timeLeft / 60)).padStart(2, '0');
   const secs = String(timeLeft % 60).padStart(2, '0');
   const timerDanger = timeLeft < 60;
@@ -49,6 +51,15 @@ export function QuizScreen({
   const elapsedSecs = String(elapsedTime % 60).padStart(2, '0');
   const totalMins = String(Math.floor(totalTime / 60)).padStart(2, '0');
   const totalSecs = String(totalTime % 60).padStart(2, '0');
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [qIdx]);
 
   return (
     <div className="quiz-plain-bg relative min-h-screen flex flex-col items-center py-3 px-4">
