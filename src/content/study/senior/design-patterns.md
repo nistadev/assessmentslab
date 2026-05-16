@@ -147,4 +147,184 @@ lessons:
           def available(self, sku):
               return remote_inventory.available(sku, timeout=2)
   difficulty: senior
+- title: Pattern choice starts from change axis and ownership
+  explanation: |
+    At senior level, design patterns are a way to make expected change explicit.
+
+    Before choosing a pattern, ask what changes, how often it changes, who owns the change, and what should stay stable. Strategy may fit market-specific tax rules because markets change independently. Adapter may fit a payment SDK because vendor details should not leak into checkout. Template Method may fit a regulated workflow because the sequence must stay fixed.
+
+    Where to apply:
+    Use this reasoning during design reviews and refactors. A senior engineer should be able to explain the force behind the pattern, not only name it. The right pattern localizes future change and makes tests easier to target.
+
+    Do not confuse with:
+    "This is a design pattern" is not a justification. If no expected change or ownership boundary exists, the pattern may only add ceremony.
+  examples:
+  - label: Good strategy force
+    description: Tax rules vary by market and each market can change independently.
+    code: |
+      tax_rule = tax_rules.for_market(order.market)
+      total = tax_rule.apply(order)
+  - label: Good adapter force
+    description: Checkout should not know gateway-specific field names.
+    code: |
+      payments.charge(order.payment_method, order.total)
+  - label: Weak force
+    description: One implementation behind a generic strategy name hides simple behavior.
+    code: |
+      class StringTrimStrategy:
+          def apply(self, value):
+              return value.strip()
+  difficulty: senior
+- title: Patterns compose around boundaries when each has a clear job
+  explanation: |
+    At senior level, patterns often work together, but each pattern should still have one clear reason to exist.
+
+    A factory can select a provider adapter. The adapter can translate vendor fields. A decorator can add retry or metrics around the adapter. A strategy can choose a business rule before the adapter is called. This composition is healthy when each layer owns a different type of change.
+
+    Where to apply:
+    Use composition at integration boundaries, payment flows, export pipelines, notification systems, and repositories. Keep business policy separate from vendor translation and keep cross-cutting behavior separate from core operations.
+
+    Do not confuse with:
+    Stacking patterns is not automatically architecture. If layers cannot be explained in one sentence each, they may be hiding tangled responsibilities instead of separating them.
+  examples:
+  - label: Clear composition
+    description: Factory selects provider, adapter translates provider, decorator adds retry.
+    code: |
+      provider = PaymentFactory.create("stripe")
+      payments = RetryingPayments(StripeAdapter(provider), attempts=3)
+      payments.charge(card, amount)
+  - label: Policy outside adapter
+    description: Eligibility is decided before the boundary adapter is called.
+    code: |
+      if risk_policy.can_charge(order):
+          payments.charge(order.card, order.total)
+  - label: "Smell: all jobs in one wrapper"
+    description: This wrapper translates, retries, checks risk, and changes pricing.
+    code: |
+      result = SmartPaymentWrapper().maybe_discount_retry_and_charge(order)
+  difficulty: senior
+- title: Extension contracts need tests before many callers depend on them
+  explanation: |
+    At senior level, Strategy, Factory, Observer, Template Method, and Chain of Responsibility often become extension points inside a service.
+
+    Once other code depends on an extension point, the hard part is the contract. You need to define inputs, outputs, allowed side effects, ordering, errors, and compatibility. Tests should verify the shared contract so new implementations can be added without breaking existing behavior.
+
+    Where to apply:
+    Use contract tests for pricing strategies, import handlers, notification subscribers, workflow hooks, and provider adapters. Document what implementers may assume and what callers may rely on.
+
+    Do not confuse with:
+    A base class or interface is not a complete contract. The real contract includes failure behavior, timing, idempotency, side effects, and data ownership.
+  examples:
+  - label: Strategy contract test
+    description: Every discount rule must return a non-negative money value and must not mutate the order.
+    code: |
+      def assert_discount_contract(rule, order):
+          before = order.copy()
+          total = rule.apply(order)
+          assert total.amount >= 0
+          assert order == before
+  - label: Observer contract
+    description: Subscribers may fail without blocking the committed order.
+    code: |
+      bus.emit_after_commit("order_placed", order)
+  - label: Handler contract
+    description: A chain handler must either return a response or call the next handler once.
+    code: |
+      response = handler.handle(request, next_handler)
+  difficulty: senior
+- title: Refactor toward a pattern in small safe steps
+  explanation: |
+    At senior level, patterns often appear during refactoring, not greenfield design.
+
+    Start by finding duplicated branches, boundary leakage, or repeated setup. Extract one clear interface or function. Move one variant behind it. Add tests around the old behavior. Then move the remaining variants. This keeps the refactor reviewable and avoids a big rewrite that changes design and behavior at the same time.
+
+    Where to apply:
+    Use incremental refactors when turning a branch into Strategy, vendor calls into Adapter, setup logic into Builder or Factory, or side effects into Observer subscribers. Keep the public behavior stable while the structure changes.
+
+    Do not confuse with:
+    Refactoring toward a pattern is not an excuse to rename everything. The goal is localizing change, not making code look like a textbook.
+  examples:
+  - label: Branch before refactor
+    description: Each new export format edits the same function.
+    code: |
+      def export(data, format):
+          if format == "csv":
+              return to_csv(data)
+          if format == "json":
+              return to_json(data)
+  - label: First extraction
+    description: Move one variant behind a common callable contract.
+    code: |
+      exporters = {
+          "csv": to_csv,
+          "json": to_json,
+      }
+
+      def export(data, format):
+          return exporters[format](data)
+  - label: Later growth
+    description: If exporters need state, move from functions to objects without changing callers.
+    code: |
+      exporters["pdf"] = PdfExporter(fonts, templates)
+  difficulty: senior
+- title: Async behavior patterns need ordering and failure semantics
+  explanation: |
+    At senior level, Observer, Command, Chain of Responsibility, and Mediator become risky when work is asynchronous or distributed.
+
+    Events can arrive twice. Commands can be retried. Handlers may time out after doing partial work. Mediators can become bottlenecks. Senior design defines ordering, idempotency, retry limits, deduplication, and what happens when one reaction fails.
+
+    Where to apply:
+    Use these concerns around message queues, background jobs, webhooks, domain events, task orchestration, and middleware. Make every command or event answer: can it run twice, can it run out of order, and who owns recovery?
+
+    Do not confuse with:
+    Making work asynchronous does not make coupling disappear. It changes direct coupling into contract, delivery, and observability problems.
+  examples:
+  - label: Idempotent command
+    description: Retried commands use a stable key to avoid duplicate payment capture.
+    code: |
+      command = CapturePayment(
+          order_id=order.id,
+          amount=order.total,
+          idempotency_key=f"capture:{order.id}",
+      )
+  - label: Event after commit
+    description: Subscribers should not see an order event before the order is durable.
+    code: |
+      orders.save(order)
+      events.publish_after_commit("order_placed", order.id)
+  - label: Chain timeout
+    description: Middleware should define whether timeout means fail closed or pass through.
+    code: |
+      response = auth_handler.handle(request, timeout=1)
+  difficulty: senior
+- title: Avoid pattern ceremony when a local design is enough
+  explanation: |
+    At senior level, pattern restraint matters as much as pattern knowledge.
+
+    A small if statement, direct constructor, or plain function can be the best design when change pressure is low. Patterns are useful when they reduce meaningful coupling, isolate volatile code, improve testability, or protect a boundary. They are harmful when they scatter simple logic across many files without reducing risk.
+
+    Where to apply:
+    Use restraint in small modules, one-off business rules, prototypes, and code owned by one team with low expected variation. Revisit the decision when the same branch or setup logic starts changing repeatedly.
+
+    Do not confuse with:
+    Simple is not the same as careless. A direct solution can still be well named, tested, and easy to refactor later.
+  examples:
+  - label: Pattern not needed yet
+    description: One stable local rule reads better as a function.
+    code: |
+      def delivery_fee(country):
+          return 5 if country == "ES" else 15
+  - label: Change pressure appears
+    description: Repeated market-specific edits justify a strategy map.
+    code: |
+      delivery_rules = {
+          "ES": SpainDeliveryRule(),
+          "US": UnitedStatesDeliveryRule(),
+      }
+  - label: Review question
+    description: Explain what future change this abstraction protects.
+    code: |
+      # Why does this interface exist?
+      price = pricing_strategy.calculate(order)
+  difficulty: senior
 ---
