@@ -7,18 +7,18 @@ export function ReviewQuestionCard({ answer }: { answer: Answer }) {
   return (
     <div className="collapse collapse-arrow brand-shell">
       <input type="checkbox" />
-      <div className="collapse-title flex items-center gap-2 text-sm">
+      <div className="collapse-title flex items-center gap-2 text-sm min-w-0">
         {answer.correct
-          ? <span className="text-success font-bold text-base">✓</span>
-          : <span className="text-error font-bold text-base">✗</span>
+          ? <span className="text-success font-bold text-base shrink-0">✓</span>
+          : <span className="text-error font-bold text-base shrink-0">✗</span>
         }
-        <span className={`badge badge-sm ${getTopicBadge(getQuestionPrimaryTopic(answer.question))}`}>
+        <span className={`badge badge-sm shrink-0 ${getTopicBadge(getQuestionPrimaryTopic(answer.question))}`}>
           {getQuestionTopicLabel(answer.question)}
         </span>
-        <span className="badge badge-outline badge-sm">
+        <span className="badge badge-outline badge-sm shrink-0">
           {getDifficultyLabel(answer.question.difficulty)}
         </span>
-        <span className="truncate text-base-content/70">{answer.question.q.split('\n')[0]}</span>
+        <span className="truncate min-w-0 text-base-content/70">{answer.question.q.split('\n')[0]}</span>
       </div>
       <div className="collapse-content">
         <QuestionPrompt q={answer.question.q} code={answer.question.code} />

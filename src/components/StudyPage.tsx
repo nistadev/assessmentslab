@@ -153,7 +153,7 @@ export default function StudyPage({
       topics: studyConfig.topics,
       difficulties: studyConfig.difficulties,
       timerMinutes: 10,
-      maxQuestions: Math.min(20, quizQuestionCount),
+      maxQuestions: 20,
       feedbackMode: 'end',
     };
     const search = buildQuizSearchParams(config, generateQuizUid());

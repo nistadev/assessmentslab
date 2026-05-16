@@ -73,7 +73,7 @@ export function StudyScreen({
     >
       <div className="w-full max-w-5xl">
         <NavHeader
-          leftLabel="Back Home"
+          leftLabel="← Back"
           onLeftAction={onBackHome}
           theme={theme}
           onToggleTheme={onToggleTheme}
