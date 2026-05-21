@@ -12,6 +12,7 @@ import {
   writeStoredStudyResult,
   writeStoredStudySession,
 } from './shared/utils';
+import { recordDailyCompletion } from '../lib/daily';
 
 export default function StudyPage({
   lessons,
@@ -55,39 +56,51 @@ export default function StudyPage({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const parsed = parseStudySearchParams(
-      new URLSearchParams(window.location.search),
-      domains,
-      topics,
-    );
+    let cancelled = false;
+    (async () => {
+      const parsed = parseStudySearchParams(
+        new URLSearchParams(window.location.search),
+        domains,
+        topics,
+      );
 
-    if (!parsed) {
-      window.location.assign('/');
-      return;
-    }
+      if (!parsed) {
+        window.location.assign('/');
+        return;
+      }
 
-    const { config } = parsed;
-    const matchingLessons = lessons.filter(
-      lesson =>
-        studyLessonMatchesSelection(lesson, config.domains, config.topics) &&
-        config.difficulties.includes(lesson.difficulty),
-    );
+      const { config } = parsed;
+      const requestedLessonId = new URLSearchParams(window.location.search).get('lessonId');
+      const matchingLessons = lessons.filter(
+        lesson =>
+          studyLessonMatchesSelection(lesson, config.domains, config.topics) &&
+          config.difficulties.includes(lesson.difficulty),
+      );
+      const finalLessons = requestedLessonId
+        ? matchingLessons.filter(lesson => lesson.lessonId === requestedLessonId)
+        : matchingLessons;
 
-    if (matchingLessons.length === 0) {
-      window.location.assign('/');
-      return;
-    }
+      if (finalLessons.length === 0) {
+        window.location.assign('/');
+        return;
+      }
 
-    setFilteredLessons(matchingLessons);
-    setLessonIdx(0);
-    setStudyConfig(config);
-    setStudyUid(parsed.uid);
-    setElapsedSeconds(0);
-    setTotalStudiedSeconds(readStoredStudyResult(parsed.uid)?.elapsedSeconds ?? 0);
-    setFinished(false);
-    sessionStartedAtRef.current = Date.now();
-    writeStoredStudySession(parsed.uid, config);
-    setReady(true);
+      const previousResult = await readStoredStudyResult(parsed.uid);
+      await writeStoredStudySession(parsed.uid, config);
+      if (cancelled) return;
+
+      setFilteredLessons(finalLessons);
+      setLessonIdx(0);
+      setStudyConfig(config);
+      setStudyUid(parsed.uid);
+      setElapsedSeconds(0);
+      setTotalStudiedSeconds(previousResult?.elapsedSeconds ?? 0);
+      setFinished(false);
+      sessionStartedAtRef.current = Date.now();
+      setReady(true);
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -100,7 +113,7 @@ export default function StudyPage({
       const now = new Date().toISOString();
 
       setElapsedSeconds(nextElapsedSeconds);
-      writeStoredStudyResult(studyUid, {
+      void writeStoredStudyResult(studyUid, {
         elapsedSeconds: totalStudiedSeconds + nextElapsedSeconds,
         lessonCount: filteredLessons.length,
         updatedAt: now,
@@ -120,7 +133,7 @@ export default function StudyPage({
     };
   }, [ready, finished, studyUid, totalStudiedSeconds, filteredLessons.length]);
 
-  function finishStudy() {
+  async function finishStudy() {
     if (!studyUid || !studyConfig) return;
 
     const finalElapsedSeconds = Math.floor((Date.now() - sessionStartedAtRef.current) / 1000);
@@ -132,7 +145,8 @@ export default function StudyPage({
       finishedAt: now,
     };
 
-    const nextResult = writeStoredStudyResult(studyUid, result);
+    const nextResult = await writeStoredStudyResult(studyUid, result);
+    await recordDailyCompletion('study', studyUid);
     setElapsedSeconds(finalElapsedSeconds);
     setTotalStudiedSeconds(nextResult.elapsedSeconds);
     setFinished(true);
@@ -185,7 +199,7 @@ export default function StudyPage({
       onBackHome={() => {
         if (studyUid) {
           const finalElapsedSeconds = Math.floor((Date.now() - sessionStartedAtRef.current) / 1000);
-          writeStoredStudyResult(studyUid, {
+          void writeStoredStudyResult(studyUid, {
             elapsedSeconds: totalStudiedSeconds + finalElapsedSeconds,
             lessonCount: filteredLessons.length,
             updatedAt: new Date().toISOString(),

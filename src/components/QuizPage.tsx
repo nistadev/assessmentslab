@@ -18,6 +18,7 @@ import {
   writeStoredQuizQuestionIds,
   writeStoredQuizResult,
 } from './shared/utils';
+import { recordDailyCompletion } from '../lib/daily';
 
 export default function QuizPage({ questions }: { questions: Question[] }) {
   const [shuffled, setShuffled] = useState<ShuffledQuestion[]>([]);
@@ -60,29 +61,35 @@ export default function QuizPage({ questions }: { questions: Question[] }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const parsed = parseQuizSearchParams(new URLSearchParams(window.location.search), domains, topics);
-    if (!parsed) {
-      window.location.assign('/');
-      return;
-    }
+    let cancelled = false;
+    (async () => {
+      const parsed = parseQuizSearchParams(new URLSearchParams(window.location.search), domains, topics);
+      if (!parsed) {
+        window.location.assign('/');
+        return;
+      }
 
-    const { config, uid } = parsed;
-    const filtered = questions.filter(q =>
-      questionMatchesSelection(q, config.domains, config.topics) && config.difficulties.includes(q.difficulty)
-    );
-    const targetCount = Math.min(config.maxQuestions, filtered.length);
-    writeStoredQuizConfig(uid, config);
+      const { config, uid } = parsed;
+      const filtered = questions.filter(q =>
+        questionMatchesSelection(q, config.domains, config.topics) && config.difficulties.includes(q.difficulty)
+      );
+      const targetCount = Math.min(config.maxQuestions, filtered.length);
+      await writeStoredQuizConfig(uid, config);
 
-    const storedIds = readStoredQuizQuestionIds(uid);
-    const selected = resolveQuestions(filtered, targetCount, uid, storedIds);
+      const storedIds = await readStoredQuizQuestionIds(uid);
+      const selected = await resolveQuestions(filtered, targetCount, uid, storedIds);
+      if (cancelled) return;
 
-    const seconds = config.timerMinutes * 60;
-    setShuffled(buildShuffled(selected));
-    setTimeLeft(seconds);
-    setTotalTime(seconds);
-    totalTimeRef.current = seconds;
-    setFeedbackMode(config.feedbackMode);
-    setReady(true);
+      const seconds = config.timerMinutes * 60;
+      setShuffled(buildShuffled(selected));
+      setTimeLeft(seconds);
+      setTotalTime(seconds);
+      totalTimeRef.current = seconds;
+      setFeedbackMode(config.feedbackMode);
+      setReady(true);
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -165,7 +172,7 @@ export default function QuizPage({ questions }: { questions: Question[] }) {
   );
 }
 
-function finishQuiz(answers: Answer[], score: number, timeLeft: number, totalSeconds: number) {
+async function finishQuiz(answers: Answer[], score: number, timeLeft: number, totalSeconds: number) {
   if (typeof window === 'undefined') return;
 
   const search = window.location.search;
@@ -179,18 +186,19 @@ function finishQuiz(answers: Answer[], score: number, timeLeft: number, totalSec
       totalSeconds,
       finishedAt: new Date().toISOString(),
     };
-    writeStoredQuizResult(uid, result);
+    await writeStoredQuizResult(uid, result);
+    await recordDailyCompletion('quiz', uid);
   }
 
   window.location.assign(`/results${search}`);
 }
 
-function resolveQuestions(
+async function resolveQuestions(
   filtered: Question[],
   targetCount: number,
   uid: string,
   storedIds: string[] | null,
-): Question[] {
+): Promise<Question[]> {
   if (storedIds && storedIds.length === targetCount) {
     const byId = new Map(filtered.map(q => [q.questionId, q]));
     const restored = storedIds.map(id => byId.get(id)).filter((q): q is Question => Boolean(q));
@@ -198,6 +206,6 @@ function resolveQuestions(
   }
 
   const sampled = sampleEvenlyByTopic(filtered, targetCount);
-  writeStoredQuizQuestionIds(uid, sampled.map(q => q.questionId));
+  await writeStoredQuizQuestionIds(uid, sampled.map(q => q.questionId));
   return sampled;
 }

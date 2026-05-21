@@ -17,6 +17,7 @@ import type {
   Theme,
 } from "../shared/types";
 import { NavHeader } from "../shared/NavHeader";
+import { DailyChallengeCard } from "./DailyChallengeCard";
 import {
   buildQuizSearchParams,
   buildStudySearchParams,
@@ -248,8 +249,17 @@ export function HomeScreen({
   }, [initialConfig]);
 
   useEffect(() => {
-    setQuizHistory(readStoredQuizHistory());
-    setStudyHistory(readStoredStudyHistory());
+    let cancelled = false;
+    (async () => {
+      const [quiz, study] = await Promise.all([
+        readStoredQuizHistory(),
+        readStoredStudyHistory(),
+      ]);
+      if (cancelled) return;
+      setQuizHistory(quiz);
+      setStudyHistory(study);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -313,13 +323,13 @@ export function HomeScreen({
   const changeMode = (nextMode: AppMode) => {
     if (mode !== nextMode) onModeChange(nextMode);
   };
-  const removeQuizHistoryEntry = (uid: string) => {
-    deleteStoredQuizSession(uid);
-    setQuizHistory(readStoredQuizHistory());
+  const removeQuizHistoryEntry = async (uid: string) => {
+    await deleteStoredQuizSession(uid);
+    setQuizHistory(await readStoredQuizHistory());
   };
-  const removeStudyHistoryEntry = (uid: string) => {
-    deleteStoredStudySession(uid);
-    setStudyHistory(readStoredStudyHistory());
+  const removeStudyHistoryEntry = async (uid: string) => {
+    await deleteStoredStudySession(uid);
+    setStudyHistory(await readStoredStudyHistory());
   };
   const start = () => {
     if (
@@ -724,6 +734,12 @@ export function HomeScreen({
             </div>
           </div>
         </div>
+
+        <DailyChallengeCard
+          mode={mode}
+          questions={questions}
+          lessons={studyLessons}
+        />
 
         {!isStudyMode && quizHistory.length > 0 && (
           <div className="card brand-shell">

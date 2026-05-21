@@ -12,27 +12,11 @@ import type {
   StoredStudyResult,
 } from './types';
 import { getTopicLabel } from '../../content/categories';
-
-const QUIZ_STORAGE_PREFIX = 'assessmentslab.quiz.';
-const STUDY_STORAGE_PREFIX = 'assessmentslab.study.';
-
-interface StoredQuizRecord {
-  questionIds?: string[];
-  config?: QuizConfig;
-  result?: StoredQuizResult;
-  trialCount?: number;
-  startedAt?: string;
-  lastUsedAt?: string;
-}
-
-interface StoredStudyRecord {
-  config?: StudyConfig;
-  startedAt?: string;
-  lastUsedAt?: string;
-  trialCount?: number;
-  result?: StoredStudyResult;
-}
-
+import {
+  quizSessions,
+  studySessions,
+  runMigrations,
+} from '../../lib/storage';
 
 export function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -316,152 +300,78 @@ export function generateQuizUid(length = 6) {
 
 export const generateStudyUid = generateQuizUid;
 
-export function readStoredQuizQuestionIds(uid: string): string[] | null {
-  const record = readStoredQuizRecord(uid);
+export async function readStoredQuizQuestionIds(uid: string): Promise<string[] | null> {
+  await runMigrations();
+  const record = await quizSessions.get(uid);
   if (!Array.isArray(record?.questionIds)) return null;
-  if (!record.questionIds.every((id: unknown) => typeof id === 'string')) return null;
+  if (!record.questionIds.every((id) => typeof id === 'string')) return null;
   return record.questionIds;
 }
 
-export function writeStoredQuizQuestionIds(uid: string, questionIds: string[]) {
-  const record = readStoredQuizRecord(uid) ?? {};
-  writeStoredQuizRecord(uid, { ...record, questionIds });
+export async function writeStoredQuizQuestionIds(uid: string, questionIds: string[]): Promise<void> {
+  await runMigrations();
+  await quizSessions.setQuestionIds(uid, questionIds);
 }
 
-export function writeStoredQuizConfig(uid: string, config: QuizConfig) {
-  const record = readStoredQuizRecord(uid) ?? {};
-  const now = new Date().toISOString();
-  writeStoredQuizRecord(uid, {
-    ...record,
-    config,
-    startedAt: record.startedAt ?? now,
-    lastUsedAt: now,
-  });
+export async function writeStoredQuizConfig(uid: string, config: QuizConfig): Promise<void> {
+  await runMigrations();
+  await quizSessions.setConfig(uid, config);
 }
 
-export function readStoredQuizConfig(uid: string): QuizConfig | null {
-  const record = readStoredQuizRecord(uid);
+export async function readStoredQuizConfig(uid: string): Promise<QuizConfig | null> {
+  await runMigrations();
+  const record = await quizSessions.get(uid);
   return record?.config ?? null;
 }
 
-export function readStoredQuizResult(uid: string): StoredQuizResult | null {
-  const record = readStoredQuizRecord(uid);
-  return isValidStoredQuizResult(record?.result) ? record.result : null;
+export async function readStoredQuizResult(uid: string): Promise<StoredQuizResult | null> {
+  await runMigrations();
+  const record = await quizSessions.get(uid);
+  return record?.result ?? null;
 }
 
-export function writeStoredQuizResult(uid: string, result: StoredQuizResult) {
-  const record = readStoredQuizRecord(uid) ?? {};
-  writeStoredQuizRecord(uid, {
-    ...record,
-    result,
-    lastUsedAt: result.finishedAt,
-    trialCount: Math.max(0, record.trialCount ?? 0) + 1,
-  });
+export async function writeStoredQuizResult(uid: string, result: StoredQuizResult): Promise<void> {
+  await runMigrations();
+  await quizSessions.setResult(uid, result);
 }
 
-export function readStoredQuizHistory(limit = 8): StoredQuizHistoryEntry[] {
+export async function readStoredQuizHistory(limit = 8): Promise<StoredQuizHistoryEntry[]> {
   if (typeof window === 'undefined') return [];
-
-  const history: StoredQuizHistoryEntry[] = [];
-
-  for (let i = 0; i < window.localStorage.length; i += 1) {
-    const key = window.localStorage.key(i);
-    if (!key?.startsWith(QUIZ_STORAGE_PREFIX)) continue;
-
-    const uid = key.slice(QUIZ_STORAGE_PREFIX.length);
-    const record = readStoredQuizRecord(uid);
-
-    if (!record?.config) continue;
-    if (!isValidQuizConfig(record.config)) continue;
-    const result = isValidStoredQuizResult(record.result) ? record.result : undefined;
-
-    history.push({
-      uid,
-      config: record.config,
-      result,
-      trialCount: Math.max(1, record.trialCount ?? 1),
-      startedAt: typeof record.startedAt === 'string' ? record.startedAt : undefined,
-      lastUsedAt: typeof record.lastUsedAt === 'string' ? record.lastUsedAt : undefined,
-    });
-  }
-
-  return history
-    .sort((a, b) => getQuizHistoryTime(b) - getQuizHistoryTime(a))
-    .slice(0, limit);
+  await runMigrations();
+  const records = await quizSessions.listRecent(limit);
+  return records.map(({ questionIds: _ignored, ...entry }) => entry);
 }
 
-export function deleteStoredQuizSession(uid: string) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(`${QUIZ_STORAGE_PREFIX}${uid}`);
+export async function deleteStoredQuizSession(uid: string): Promise<void> {
+  await runMigrations();
+  await quizSessions.remove(uid);
 }
 
-export function writeStoredStudySession(uid: string, config: StudyConfig) {
-  const record = readStoredStudyRecord(uid) ?? {};
-  const now = new Date().toISOString();
-
-  writeStoredStudyRecord(uid, {
-    ...record,
-    config,
-    startedAt: record.startedAt ?? now,
-    lastUsedAt: now,
-    trialCount: Math.max(0, record.trialCount ?? 0) + 1,
-  });
+export async function writeStoredStudySession(uid: string, config: StudyConfig): Promise<void> {
+  await runMigrations();
+  await studySessions.writeSession(uid, config);
 }
 
-export function readStoredStudyResult(uid: string): StoredStudyResult | null {
-  const record = readStoredStudyRecord(uid);
-  return normalizeStoredStudyResult(record?.result);
+export async function readStoredStudyResult(uid: string): Promise<StoredStudyResult | null> {
+  await runMigrations();
+  const record = await studySessions.get(uid);
+  return record?.result ?? null;
 }
 
-export function writeStoredStudyResult(uid: string, result: StoredStudyResult) {
-  const record = readStoredStudyRecord(uid) ?? {};
-
-  writeStoredStudyRecord(uid, {
-    ...record,
-    result,
-    lastUsedAt: result.finishedAt ?? result.updatedAt,
-  });
-
-  return result;
+export async function writeStoredStudyResult(uid: string, result: StoredStudyResult): Promise<StoredStudyResult> {
+  await runMigrations();
+  return studySessions.setResult(uid, result);
 }
 
-export function readStoredStudyHistory(limit = 8): StoredStudyHistoryEntry[] {
+export async function readStoredStudyHistory(limit = 8): Promise<StoredStudyHistoryEntry[]> {
   if (typeof window === 'undefined') return [];
-
-  const history: StoredStudyHistoryEntry[] = [];
-
-  for (let i = 0; i < window.localStorage.length; i += 1) {
-    const key = window.localStorage.key(i);
-    if (!key?.startsWith(STUDY_STORAGE_PREFIX)) continue;
-
-    const uid = key.slice(STUDY_STORAGE_PREFIX.length);
-    const record = readStoredStudyRecord(uid);
-
-    if (!record?.config) continue;
-    if (!isValidStudyConfig(record.config)) continue;
-    if (typeof record.startedAt !== 'string') continue;
-    if (typeof record.lastUsedAt !== 'string') continue;
-
-    const result = normalizeStoredStudyResult(record.result) ?? undefined;
-
-    history.push({
-      uid,
-      config: record.config,
-      trialCount: Math.max(1, record.trialCount ?? 1),
-      startedAt: record.startedAt,
-      lastUsedAt: record.lastUsedAt,
-      result,
-    });
-  }
-
-  return history
-    .sort((a, b) => Date.parse(b.lastUsedAt) - Date.parse(a.lastUsedAt))
-    .slice(0, limit);
+  await runMigrations();
+  return studySessions.listRecent(limit);
 }
 
-export function deleteStoredStudySession(uid: string) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.removeItem(`${STUDY_STORAGE_PREFIX}${uid}`);
+export async function deleteStoredStudySession(uid: string): Promise<void> {
+  await runMigrations();
+  await studySessions.remove(uid);
 }
 
 function encodeQuizConfig(config: QuizConfig) {
@@ -505,112 +415,4 @@ function fromBase64Url(value: string) {
   const binary = atob(padded);
   const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
   return new TextDecoder().decode(bytes);
-}
-
-function readStoredQuizRecord(uid: string): StoredQuizRecord | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const raw = window.localStorage.getItem(`${QUIZ_STORAGE_PREFIX}${uid}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredQuizRecord;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredQuizRecord(uid: string, record: StoredQuizRecord) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(`${QUIZ_STORAGE_PREFIX}${uid}`, JSON.stringify(record));
-}
-
-function readStoredStudyRecord(uid: string): StoredStudyRecord | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const raw = window.localStorage.getItem(`${STUDY_STORAGE_PREFIX}${uid}`);
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredStudyRecord;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredStudyRecord(uid: string, record: StoredStudyRecord) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(`${STUDY_STORAGE_PREFIX}${uid}`, JSON.stringify(record));
-}
-
-function isValidQuizConfig(value: unknown): value is QuizConfig {
-  if (!value || typeof value !== 'object') return false;
-
-  const config = value as QuizConfig;
-
-  return Array.isArray(config.domains)
-    && Array.isArray(config.topics)
-    && Array.isArray(config.difficulties)
-    && typeof config.timerMinutes === 'number'
-    && typeof config.maxQuestions === 'number'
-    && (config.feedbackMode === 'end' || config.feedbackMode === 'immediate');
-}
-
-function isValidStoredQuizResult(value: unknown): value is StoredQuizResult {
-  if (!value || typeof value !== 'object') return false;
-
-  const result = value as StoredQuizResult;
-
-  return typeof result.score === 'number'
-    && Array.isArray(result.answers)
-    && typeof result.elapsedSeconds === 'number'
-    && typeof result.totalSeconds === 'number'
-    && typeof result.finishedAt === 'string';
-}
-
-function getQuizHistoryTime(entry: StoredQuizHistoryEntry) {
-  return Date.parse(
-    entry.result?.finishedAt ?? entry.lastUsedAt ?? entry.startedAt ?? '',
-  ) || 0;
-}
-
-function isValidStudyConfig(value: unknown): value is StudyConfig {
-  if (!value || typeof value !== 'object') return false;
-
-  const config = value as StudyConfig;
-
-  return Array.isArray(config.domains)
-    && Array.isArray(config.topics)
-    && Array.isArray(config.difficulties)
-    && config.domains.every((domain) => typeof domain === 'string')
-    && config.topics.every((topic) => typeof topic === 'string')
-    && config.difficulties.every((difficulty) => isQuestionDifficulty(difficulty));
-}
-
-function normalizeStoredStudyResult(value: unknown): StoredStudyResult | null {
-  if (!value || typeof value !== 'object') return null;
-
-  const result = value as StoredStudyResult;
-  const updatedAt =
-    typeof result.updatedAt === 'string'
-      ? result.updatedAt
-      : typeof result.finishedAt === 'string'
-        ? result.finishedAt
-        : null;
-
-  if (!(typeof result.elapsedSeconds === 'number'
-    && Number.isFinite(result.elapsedSeconds)
-    && result.elapsedSeconds >= 0
-    && typeof result.lessonCount === 'number'
-    && Number.isFinite(result.lessonCount)
-    && result.lessonCount >= 0
-    && updatedAt
-    && (typeof result.finishedAt === 'undefined' || typeof result.finishedAt === 'string'))) {
-    return null;
-  }
-
-  return {
-    elapsedSeconds: result.elapsedSeconds,
-    lessonCount: result.lessonCount,
-    updatedAt,
-    finishedAt: result.finishedAt,
-  };
 }

@@ -22,10 +22,20 @@ export default function ResultsPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const uid = new URLSearchParams(window.location.search).get('uid');
-    setResult(uid ? readStoredQuizResult(uid) : null);
-    setConfig(uid ? readStoredQuizConfig(uid) : null);
-    setLoaded(true);
+    let cancelled = false;
+    (async () => {
+      const uid = new URLSearchParams(window.location.search).get('uid');
+      const [nextResult, nextConfig] = await Promise.all([
+        uid ? readStoredQuizResult(uid) : Promise.resolve(null),
+        uid ? readStoredQuizConfig(uid) : Promise.resolve(null),
+      ]);
+      if (cancelled) return;
+      setResult(nextResult);
+      setConfig(nextConfig);
+      setLoaded(true);
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   function toggleTheme() {
