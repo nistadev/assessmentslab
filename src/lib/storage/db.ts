@@ -1,15 +1,15 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import { DB_NAME, DB_VERSION, INDEX, STORE, type AssesLabSchema } from './schema';
+import { DB_NAME, DB_VERSION, INDEX, STORE, type AssessmentsLabSchema } from './schema';
 
-let dbPromise: Promise<IDBPDatabase<AssesLabSchema>> | null = null;
+let dbPromise: Promise<IDBPDatabase<AssessmentsLabSchema>> | null = null;
 
-export function getDb(): Promise<IDBPDatabase<AssesLabSchema>> {
+export function getDb(): Promise<IDBPDatabase<AssessmentsLabSchema>> {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('IndexedDB is only available in the browser.'));
   }
 
   if (!dbPromise) {
-    dbPromise = openDB<AssesLabSchema>(DB_NAME, DB_VERSION, {
+    dbPromise = openDB<AssessmentsLabSchema>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const quiz = db.createObjectStore(STORE.quizSessions, { keyPath: 'uid' });

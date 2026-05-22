@@ -23,7 +23,7 @@ export const INDEX = {
   byLastUsed: 'byLastUsed',
 } as const;
 
-export interface AssesLabSchema extends DBSchema {
+export interface AssessmentsLabSchema extends DBSchema {
   quizSessions: {
     key: string;
     value: QuizSessionRecord;

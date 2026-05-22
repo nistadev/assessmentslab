@@ -1,4 +1,4 @@
-import { ThemeToggle } from './ThemeToggle';
+import { UserMenu } from './UserMenu';
 import type { Theme } from './types';
 import type { ReactNode } from 'react';
 
@@ -38,7 +38,7 @@ export function NavHeader({
       </div>
 
       <div className="justify-self-end">
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <UserMenu theme={theme} onToggleTheme={onToggleTheme} />
       </div>
     </div>
   );

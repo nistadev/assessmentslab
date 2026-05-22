@@ -1,6 +1,6 @@
 export { getDb } from './db';
 export { STORE, INDEX, DB_NAME, DB_VERSION } from './schema';
-export type { AssesLabSchema } from './schema';
+export type { AssessmentsLabSchema } from './schema';
 export type {
   DailyChallengeRecord,
   DailyMode,

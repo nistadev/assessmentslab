@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Question, StudyLesson, QuestionDifficulty } from '../../components/shared/types';
 import {
   buildQuizSearchParams,
@@ -64,8 +64,17 @@ export function useDailyChallenge({ mode, questions, lessons }: UseDailyChalleng
   const [activeRecord, setActiveRecord] = useState<DailyChallengeRecord | null>(null);
   const [draft, setDraft] = useState<DailyQuizDraft | DailyLessonDraft | null>(null);
 
+  const questionsRef = useRef(questions);
+  const lessonsRef = useRef(lessons);
+  questionsRef.current = questions;
+  lessonsRef.current = lessons;
+
   useEffect(() => {
     let cancelled = false;
+    setState('loading');
+    setPreview(null);
+    setDraft(null);
+    setActiveRecord(null);
 
     (async () => {
       await runMigrations();
@@ -83,20 +92,17 @@ export function useDailyChallenge({ mode, questions, lessons }: UseDailyChalleng
       setStreak(toStreakView(streakRecord, dateKey, prev));
 
       if (record?.completedAt) {
-        setState('completed');
         setActiveRecord(record);
-        setPreview(null);
+        setState('completed');
         return;
       }
 
       const generated = mode === 'quiz'
-        ? generateDailyQuiz(dateKey, pool, questions)
-        : generateDailyLesson(dateKey, pool, lessons);
+        ? generateDailyQuiz(dateKey, pool, questionsRef.current)
+        : generateDailyLesson(dateKey, pool, lessonsRef.current);
 
       if (!generated) {
         setState('locked');
-        setPreview(null);
-        setDraft(null);
         return;
       }
 
@@ -107,7 +113,6 @@ export function useDailyChallenge({ mode, questions, lessons }: UseDailyChalleng
         setActiveRecord(record);
         setState('inProgress');
       } else {
-        setActiveRecord(null);
         setState('ready');
       }
     })().catch((error) => {
@@ -116,7 +121,7 @@ export function useDailyChallenge({ mode, questions, lessons }: UseDailyChalleng
     });
 
     return () => { cancelled = true; };
-  }, [mode, questions, lessons]);
+  }, [mode]);
 
   const start = useCallback(async () => {
     if (!draft) return;
