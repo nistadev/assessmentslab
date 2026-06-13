@@ -1,6 +1,7 @@
 ---
 import FooterBar from '../components/FooterBar.astro';
 import SettingsPage from '../components/SettingsPage';
+import ServiceWorkerCleanup from '../components/shared/ServiceWorkerCleanup.astro';
 import '../styles/global.css';
 ---
 
@@ -23,6 +24,7 @@ import '../styles/global.css';
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
+    <ServiceWorkerCleanup />
     <SettingsPage client:load />
     <FooterBar />
   </body>

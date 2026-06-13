@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { HomeScreen } from './home/HomeScreen';
-import { PwaUpdatePrompt } from './shared/PwaUpdatePrompt';
 import type { AppMode, Question, StudyLesson, Theme } from './shared/types';
 import { buildQuizSearchParams, buildStudySearchParams, generateQuizUid, generateStudyUid } from './shared/utils';
 
@@ -43,7 +42,6 @@ export default function HomePage({
 
   return (
     <>
-    <PwaUpdatePrompt />
     <HomeScreen
       mode={mode}
       onModeChange={setMode}

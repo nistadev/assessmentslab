@@ -12,6 +12,7 @@ export default defineConfig({
     react(),
     AstroPWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['icons/icon.svg', 'icons/icon-maskable.svg'],
       manifest: {
         name: 'AssessmentsLab',

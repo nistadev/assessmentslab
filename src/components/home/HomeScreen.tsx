@@ -63,8 +63,7 @@ function getInitialDomainSelection(
   initialConfig?: QuizConfig | null,
 ) {
   if (initialConfig?.domains.length) return initialConfig.domains;
-  if (domains.length === 0) return [];
-  return [];
+  return [...domains];
 }
 
 function getInitialTopicSelection(
@@ -176,10 +175,13 @@ export function HomeScreen({
     initialConfig?.correctWeight ?? 90,
   );
 
+  const initialStudyDomains = getInitialDomainSelection(studyDomains, null);
   const [studySelectedDomains, setStudySelectedDomains] = useState<string[]>(
-    [],
+    () => initialStudyDomains,
   );
-  const [studySelectedTopics, setStudySelectedTopics] = useState<string[]>([]);
+  const [studySelectedTopics, setStudySelectedTopics] = useState<string[]>(() =>
+    getInitialTopicSelection(studyTopics, initialStudyDomains, null),
+  );
   const [studyDifficulties, setStudyDifficulties] =
     useState<QuestionDifficulty[]>(DIFFICULTY_OPTIONS);
 

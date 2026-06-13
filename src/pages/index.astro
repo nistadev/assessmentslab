@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import FooterBar from '../components/FooterBar.astro';
 import HomePage from '../components/HomePage';
+import ServiceWorkerCleanup from '../components/shared/ServiceWorkerCleanup.astro';
 import '../styles/global.css';
 
 const entries = await getCollection('questions');
@@ -47,6 +48,7 @@ const studyLessons = studyEntries
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
+    <ServiceWorkerCleanup />
     <HomePage questions={questions} studyLessons={studyLessons} client:load />
     <FooterBar />
   </body>

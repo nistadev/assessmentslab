@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import FooterBar from '../components/FooterBar.astro';
 import StudyPage from '../components/StudyPage';
+import ServiceWorkerCleanup from '../components/shared/ServiceWorkerCleanup.astro';
 import '../styles/global.css';
 
 const entries = await getCollection('study');
@@ -48,6 +49,7 @@ const questions = questionEntries.flatMap(entry =>
     </script>
   </head>
   <body class="min-h-screen bg-base-100">
+    <ServiceWorkerCleanup />
     <StudyPage lessons={lessons} questions={questions} client:load />
     <FooterBar />
   </body>
